@@ -3,6 +3,7 @@ use crate::{
     utils::{Point, Vector, normalize},
 };
 
+#[derive(Debug)]
 pub struct Pen {
     global_point: Point,
     cos_theta: f64,
@@ -80,5 +81,17 @@ impl Pen {
             .collect::<Vec<Point>>();
 
         Polygon::new(local_points)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_pen_construction() {
+        let pen1 = Pen::new(10.0, 20.0);
+
+        println!("{:?}", pen1);
     }
 }
