@@ -90,8 +90,27 @@ mod test {
 
     #[test]
     fn test_pen_construction() {
-        let pen1 = Pen::new(10.0, 20.0);
+        let pen1 = Pen::new(100.0, 100.0);
+        let point1 = pen1.get_point(10.0, 0.0, false);
 
-        println!("{:?}", pen1);
+        assert_eq!(point1, (110.0, 100.0).into());
+    }
+
+    #[test]
+    fn test_right() {
+        let mut pen2 = Pen::new(0.0, 0.0);
+        pen2.set_right(10.0, 0.0);
+        let point2 = pen2.get_point(5.0, 0.0, false);
+
+        assert_eq!(point2, (5.0, 0.0).into());
+    }
+
+    #[test]
+    fn test_up() {
+        let mut pen3 = Pen::new(0.0, 0.0);
+        pen3.set_up(0.0, 10.0);
+        let point3 = pen3.get_point(5.0, 0.0, false);
+
+        assert_eq!(point3, (-5.0, 0.0).into());
     }
 }
