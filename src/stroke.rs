@@ -1,7 +1,7 @@
 use crate::utils::Point;
 
 fn stretch_numeric(dest_pivot: f64, src_pivot: f64, origin_point: f64, min: f64, max: f64) -> f64 {
-    let (p1, p2, p3, p4) = if (origin_point < src_pivot + 100.0) {
+    let (p1, p2, p3, p4) = if origin_point < src_pivot + 100.0 {
         (min, src_pivot + 100.0, min, dest_pivot + 100.0)
     } else {
         (src_pivot + 100.0, max, dest_pivot + 100.0, max)
