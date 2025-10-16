@@ -10,7 +10,7 @@ where
     vector_1.x * vector_2.y - vector_1.y * vector_2.x
 }
 
-fn is_cross<P1, P2, P3, P4>(
+pub(crate) fn is_cross<P1, P2, P3, P4>(
     vector_1_start: P1,
     vector_1_end: P2,
     vector_2_start: P3,
@@ -55,7 +55,7 @@ where
         && round(cross_2s2e_2s1s * cross_2s2e_2s1e, 5) <= 0.0
 }
 
-fn is_cross_box<P1, P2, P3, P4>(
+pub(crate) fn is_cross_box<P1, P2, P3, P4>(
     vector_1_start: P1,
     vector_1_end: P2,
     box_diag_1: P3,
