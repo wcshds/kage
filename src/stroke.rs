@@ -36,6 +36,103 @@ where
     Point::new(x, y, origin_point.off_curve)
 }
 
+#[repr(u32)]
+enum StrokeType {
+    // 1 ~ 6: Stroke Lines
+    /// 直線
+    StraightLine = 1, // 2 control point
+    /// 曲線
+    Curve = 2, // 3 control points
+    /// 折線
+    Polyline = 3, // 3 control points
+    /// 「乙」形線
+    OtsuLine = 4, // 3 control points
+    /// 複曲線
+    CompoundCurve = 6, // 4 control points
+    /// 豎撇
+    VerticalSweep = 7, // 4 control points
+
+    /// 未知的筆劃類型
+    Unknown(u32),
+    // // 99: component reference line
+    // /// 部件引用行
+    // ComponentReferenceLine = 99,
+
+    // // 0: Special Lines
+    // /// 特殊行
+    // SpecialLine = 0,
+}
+
+impl StrokeType {
+    fn new(num: u32) -> Self {
+        let num_base = num / 100;
+        let num_opt = num % 100;
+
+        let num = if num_opt == 0 { num_base } else { 1 };
+
+        match num {
+            1 => Self::StraightLine,
+            2 | 12 => Self::Curve, // 12??
+            3 => Self::Polyline,
+            4 => Self::OtsuLine,
+            6 => Self::CompoundCurve,
+            7 => Self::VerticalSweep,
+            n => Self::Unknown(n),
+        }
+    }
+}
+
+enum HeadShape {
+    /// 圓頭
+    Round = 1,
+    /// 方頭
+    Square = 2,
+}
+
+enum EndShape {
+    /// 開放
+    Open = 0,
+    /// 連接（橫向）
+    HorizontalConnection = 2,
+    /// 連接（縱向）
+    VerticalConnection = 32,
+    /// 左上角
+    TopLeftCorner = 12,
+    /// 右上角
+    TopRightCorner = 22,
+    /// 左下角
+    BottomLeftCorner = 13,
+    /// 右下角
+    BottomRightCorner = 23,
+    /// 左上挑
+    LeftUpwardFlick = 4,
+    /// 右上挑
+    RightUpwardFlick = 5,
+    /// 左下zh用舊
+    BottomLeftZhOld = 313,
+    /// 左下zh用新
+    BottomLeftZhNew = 413,
+    /// 右下H/T
+    BottomRightHorT = 24,
+    /// 細端
+    Narrow = 7,
+    /// 有屋頂的細入
+    RoofedNarrowEntry = 27,
+    /// 收筆
+    Stop = 8,
+}
+
+// https://glyphwiki.org/wiki/GlyphWiki:KAGE%E3%83%87%E3%83%BC%E3%82%BF%E4%BB%95%E6%A7%98#i3
+struct Stroke {
+    stroke_type: StrokeType,
+    head_shape: EndShape,
+    tail_shape: EndShape,
+    point1: Point,
+    point2: Point,
+    point3: Point,
+    point4: Point,
+}
+
 #[cfg(test)]
 mod test {
     use crate::stroke::stretch;
