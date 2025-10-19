@@ -14,8 +14,8 @@ fn stretch<P1, P2, P3, P4, P5>(
     dest_pivot: P1,
     src_pivot: P2,
     origin_point: P3,
-    min: P4,
-    max: P5,
+    min_point: P4,
+    max_point: P5,
 ) -> Point
 where
     P1: Into<Point>,
@@ -27,8 +27,8 @@ where
     let dest_pivot: Point = dest_pivot.into();
     let src_pivot: Point = src_pivot.into();
     let origin_point: Point = origin_point.into();
-    let min: Point = min.into();
-    let max: Point = max.into();
+    let min: Point = min_point.into();
+    let max: Point = max_point.into();
 
     let x = stretch_numeric(dest_pivot.x, src_pivot.x, origin_point.x, min.x, max.x);
     let y = stretch_numeric(dest_pivot.y, src_pivot.y, origin_point.y, min.y, max.y);
@@ -36,24 +36,24 @@ where
     Point::new(x, y, origin_point.off_curve)
 }
 
-#[repr(u32)]
-enum StrokeType {
+#[derive(Debug, PartialEq)]
+enum StrokeKind {
     // 1 ~ 6: Stroke Lines
     /// 直線
     StraightLine = 1, // 2 control point
     /// 曲線
     Curve = 2, // 3 control points
     /// 折線
-    Polyline = 3, // 3 control points
-    /// 「乙」形線
-    OtsuLine = 4, // 3 control points
-    /// 複曲線
-    CompoundCurve = 6, // 4 control points
+    BendLine = 3, // 3 control points
+    /// 折彎（「乙」狀線）
+    OtsuCurve = 4, // 3 control points
+    /// 二次曲線
+    ComplexCurve = 6, // 4 control points
     /// 豎撇
-    VerticalSweep = 7, // 4 control points
+    VerticalSlash = 7, // 4 control points
 
     /// 未知的筆劃類型
-    Unknown(u32),
+    Unknown,
     // // 99: component reference line
     // /// 部件引用行
     // ComponentReferenceLine = 99,
@@ -63,31 +63,40 @@ enum StrokeType {
     // SpecialLine = 0,
 }
 
+#[derive(Debug, PartialEq)]
+struct StrokeType {
+    base: u32,
+    opt: u32,
+    kind: StrokeKind,
+}
+
 impl StrokeType {
     fn new(num: f64) -> Self {
-        let num_base = (num / 100.0).floor() as u32;
-        let num_opt = num as u32 % 100;
+        let num_base = num as u32 % 100;
+        let num_opt = (num / 100.0).floor() as u32;
 
-        if num_opt != 0 {
-            return Self::StraightLine;
+        let kind = match num_base {
+            1 => StrokeKind::StraightLine,
+            2 | 12 => StrokeKind::Curve, // 12????
+            3 => StrokeKind::BendLine,
+            4 => StrokeKind::OtsuCurve,
+            6 => StrokeKind::ComplexCurve,
+            7 => StrokeKind::VerticalSlash,
+            _ => StrokeKind::Unknown,
         };
 
-        match num_base {
-            1 => Self::StraightLine,
-            2 | 12 => Self::Curve, // 12??
-            3 => Self::Polyline,
-            4 => Self::OtsuLine,
-            6 => Self::CompoundCurve,
-            7 => Self::VerticalSweep,
-            n => Self::Unknown(n),
+        Self {
+            base: num_base,
+            opt: num_opt,
+            kind,
         }
     }
 }
 
-#[repr(u32)]
-enum EndShape {
+#[derive(Debug, PartialEq)]
+enum EndKind {
     /// 開放
-    Open = 0,
+    Free = 0,
     /// 連接（橫向）
     HorizontalConnection = 2,
     /// 連接（縱向）
@@ -117,40 +126,60 @@ enum EndShape {
     /// 收筆
     Stop = 8,
 
-    Unknown(u32),
+    Unknown,
 }
 
-impl EndShape {
-    fn new(num: f64) -> Self {
-        let num_base = (num / 100.0).floor() as u32;
-        // let num_opt = num as u32 % 100;
+#[derive(Debug, PartialEq)]
+struct EndType {
+    base: u32,
+    opt: u32,
+    kind: EndKind,
+}
 
-        match num_base {
-            0 => Self::Open,
-            2 => Self::HorizontalConnection,
-            4 => Self::LeftUpwardFlick,
-            5 => Self::RightUpwardFlick,
-            7 => Self::Narrow,
-            8 => Self::Stop,
-            12 => Self::TopLeftCorner,
-            13 => Self::BottomLeftCorner,
-            22 => Self::TopRightCorner,
-            23 => Self::BottomRightCorner,
-            24 => Self::BottomRightHorT,
-            27 => Self::RoofedNarrowEntry,
-            32 => Self::VerticalConnection,
-            313 => Self::BottomLeftZhOld,
-            413 => Self::BottomLeftZhNew,
-            n => Self::Unknown(n),
+impl EndType {
+    fn new(num: f64) -> Self {
+        let num_base = num as u32 % 100;
+        let num_opt = (num / 100.0).floor() as u32;
+
+        let kind = match num_base {
+            0 => EndKind::Free,
+            2 => EndKind::HorizontalConnection,
+            4 => EndKind::LeftUpwardFlick,
+            5 => EndKind::RightUpwardFlick,
+            7 => EndKind::Narrow,
+            8 => EndKind::Stop,
+            12 => EndKind::TopLeftCorner,
+            13 => EndKind::BottomLeftCorner,
+            22 => EndKind::TopRightCorner,
+            23 => EndKind::BottomRightCorner,
+            24 => EndKind::BottomRightHorT,
+            27 => EndKind::RoofedNarrowEntry,
+            32 => EndKind::VerticalConnection,
+            313 => EndKind::BottomLeftZhOld,
+            413 => EndKind::BottomLeftZhNew,
+            _ => EndKind::Unknown,
+        };
+
+        EndType {
+            base: num_base,
+            opt: num_opt,
+            kind,
         }
     }
 }
 
+#[derive(Debug, PartialEq)]
+struct Bounds {
+    min_point: Point,
+    max_point: Point,
+}
+
 // https://glyphwiki.org/wiki/GlyphWiki:KAGE%E3%83%87%E3%83%BC%E3%82%BF%E4%BB%95%E6%A7%98#i3
+#[derive(Debug, PartialEq)]
 struct Stroke {
     stroke_type: StrokeType,
-    head_shape: EndShape,
-    tail_shape: EndShape,
+    head_shape: EndType,
+    tail_shape: EndType,
     point1: Point,
     point2: Point,
     point3: Point,
@@ -172,12 +201,12 @@ impl Stroke {
         field11: f64,
     ) -> Self {
         let stroke_type = StrokeType::new(field1);
-        let head_shape = EndShape::new(field2);
-        let tail_shape = EndShape::new(field3);
-        let point1 = (field4, field5).into();
-        let point2 = (field6, field7).into();
-        let point3 = (field8, field9).into();
-        let point4 = (field10, field11).into();
+        let head_shape = EndType::new(field2);
+        let tail_shape = EndType::new(field3);
+        let point1 = (field4, field5, None).into();
+        let point2 = (field6, field7, None).into();
+        let point3 = (field8, field9, None).into();
+        let point4 = (field10, field11, None).into();
 
         Self {
             stroke_type,
@@ -191,19 +220,25 @@ impl Stroke {
     }
 
     fn get_control_segments(&self) -> Vec<(Point, Point)> {
-        match self.stroke_type {
-            StrokeType::StraightLine => vec![(self.point1, self.point2)],
-            StrokeType::Curve | StrokeType::Polyline | StrokeType::OtsuLine => {
+        let opt = self.stroke_type.opt;
+
+        if opt != 0 {
+            return vec![(self.point1, self.point2)];
+        }
+
+        match self.stroke_type.kind {
+            StrokeKind::StraightLine => vec![(self.point1, self.point2)],
+            StrokeKind::Curve | StrokeKind::BendLine | StrokeKind::OtsuCurve => {
                 vec![(self.point1, self.point2), (self.point2, self.point3)]
             }
-            StrokeType::CompoundCurve | StrokeType::VerticalSweep => {
+            StrokeKind::ComplexCurve | StrokeKind::VerticalSlash => {
                 vec![
                     (self.point1, self.point2),
                     (self.point2, self.point3),
                     (self.point3, self.point4),
                 ]
             }
-            StrokeType::Unknown(_) => vec![],
+            StrokeKind::Unknown => vec![],
         }
     }
 
@@ -226,11 +261,83 @@ impl Stroke {
             .iter()
             .any(|(p1, p2)| two_d::is_cross_box(p1, p2, box_diag_1, box_diag_2))
     }
+
+    fn stretch<P1, P2, P3, P4>(
+        &mut self,
+        dest_pivot: P1,
+        src_pivot: P2,
+        min_point: P3,
+        max_point: P4,
+    ) where
+        P1: Into<Point> + Copy,
+        P2: Into<Point> + Copy,
+        P3: Into<Point> + Copy,
+        P4: Into<Point> + Copy,
+    {
+        self.point1 = stretch(dest_pivot, src_pivot, self.point1, min_point, max_point);
+        self.point2 = stretch(dest_pivot, src_pivot, self.point2, min_point, max_point);
+        // if !(this.a1_100 === 99 && this.a1_opt === 0) {  }
+        self.point3 = stretch(dest_pivot, src_pivot, self.point3, min_point, max_point);
+        self.point4 = stretch(dest_pivot, src_pivot, self.point4, min_point, max_point);
+    }
+
+    fn get_box(&self) -> Bounds {
+        let mut min_point = Point::INFINITY;
+        let mut max_point = Point::NEG_INFINITY;
+
+        #[inline]
+        fn update_bounds(min_point: &mut Point, max_point: &mut Point, point: Point) {
+            *min_point = min_point.min(point);
+            *max_point = max_point.max(point);
+        }
+
+        // let a1 = if self.a1_opt == 0 { self.a1_100 } else { 6 };
+        if self.stroke_type.opt != 0 {
+            update_bounds(&mut min_point, &mut max_point, self.point1);
+            update_bounds(&mut min_point, &mut max_point, self.point2);
+            update_bounds(&mut min_point, &mut max_point, self.point3);
+            update_bounds(&mut min_point, &mut max_point, self.point4);
+
+            return Bounds {
+                min_point,
+                max_point,
+            };
+        }
+
+        match self.stroke_type.kind {
+            StrokeKind::Unknown if self.stroke_type.base == 0 => {}
+            StrokeKind::StraightLine => {
+                update_bounds(&mut min_point, &mut max_point, self.point1);
+                update_bounds(&mut min_point, &mut max_point, self.point2);
+            }
+            StrokeKind::Curve | StrokeKind::BendLine | StrokeKind::OtsuCurve => {
+                update_bounds(&mut min_point, &mut max_point, self.point1);
+                update_bounds(&mut min_point, &mut max_point, self.point2);
+                update_bounds(&mut min_point, &mut max_point, self.point3);
+            }
+            _ => {
+                update_bounds(&mut min_point, &mut max_point, self.point1);
+                update_bounds(&mut min_point, &mut max_point, self.point2);
+                update_bounds(&mut min_point, &mut max_point, self.point3);
+                update_bounds(&mut min_point, &mut max_point, self.point4);
+            }
+        }
+
+        Bounds {
+            min_point,
+            max_point,
+        }
+    }
 }
 
 #[cfg(test)]
 mod test {
-    use crate::stroke::stretch;
+    use core::f64;
+
+    use crate::{
+        stroke::{self, Bounds, EndKind, EndType, Stroke, StrokeKind, StrokeType, stretch},
+        utils::Point,
+    };
 
     #[test]
     fn test_stretch() {
@@ -332,5 +439,292 @@ mod test {
             (1000.0, 1000.0),
         );
         assert_eq!(result10, (800.0, 800.0).into());
+    }
+
+    #[test]
+    fn test_construction() {
+        let stroke1 = Stroke::new(1.0, 0.0, 2.0, 32.0, 31.0, 176.0, 31.0, 0.0, 0.0, 0.0, 0.0);
+
+        assert_eq!(
+            stroke1,
+            Stroke {
+                stroke_type: StrokeType {
+                    base: 1,
+                    opt: 0,
+                    kind: StrokeKind::StraightLine,
+                },
+                head_shape: EndType {
+                    base: 0,
+                    opt: 0,
+                    kind: EndKind::Free,
+                },
+                tail_shape: EndType {
+                    base: 2,
+                    opt: 0,
+                    kind: EndKind::HorizontalConnection,
+                },
+                point1: Point {
+                    x: 32.0,
+                    y: 31.0,
+                    off_curve: None,
+                },
+                point2: Point {
+                    x: 176.0,
+                    y: 31.0,
+                    off_curve: None,
+                },
+                point3: Point {
+                    x: 0.0,
+                    y: 0.0,
+                    off_curve: None,
+                },
+                point4: Point {
+                    x: 0.0,
+                    y: 0.0,
+                    off_curve: None,
+                },
+            }
+        );
+
+        assert_eq!(
+            stroke1.get_control_segments(),
+            vec![(
+                Point {
+                    x: 32.0,
+                    y: 31.0,
+                    off_curve: None,
+                },
+                Point {
+                    x: 176.0,
+                    y: 31.0,
+                    off_curve: None,
+                },
+            )]
+        );
+
+        assert_eq!(
+            stroke1.get_box(),
+            Bounds {
+                min_point: Point {
+                    x: 32.0,
+                    y: 31.0,
+                    off_curve: None,
+                },
+                max_point: Point {
+                    x: 176.0,
+                    y: 31.0,
+                    off_curve: None,
+                },
+            }
+        )
+    }
+
+    #[test]
+    fn test_different_stroke_type() {
+        let stroke2 = Stroke::new(
+            2.0, 22.0, 7.0, 176.0, 31.0, 170.0, 43.0, 156.0, 63.0, 0.0, 0.0,
+        );
+
+        assert_eq!(stroke2.stroke_type.kind, StrokeKind::Curve);
+        assert_eq!(stroke2.stroke_type.base, 2);
+        assert_eq!(stroke2.stroke_type.opt, 0);
+        assert_eq!(
+            stroke2.get_control_segments(),
+            [
+                (
+                    Point {
+                        x: 176.0,
+                        y: 31.0,
+                        off_curve: None,
+                    },
+                    Point {
+                        x: 170.0,
+                        y: 43.0,
+                        off_curve: None,
+                    },
+                ),
+                (
+                    Point {
+                        x: 170.0,
+                        y: 43.0,
+                        off_curve: None,
+                    },
+                    Point {
+                        x: 156.0,
+                        y: 63.0,
+                        off_curve: None,
+                    },
+                ),
+            ]
+        );
+
+        let stroke3 = Stroke::new(
+            3.0, 0.0, 0.0, 100.0, 100.0, 150.0, 50.0, 200.0, 100.0, 250.0, 150.0,
+        );
+
+        assert_eq!(stroke3.stroke_type.kind, StrokeKind::BendLine);
+        assert_eq!(stroke3.stroke_type.base, 3);
+        assert_eq!(stroke3.stroke_type.opt, 0);
+        assert_eq!(
+            stroke3.get_control_segments(),
+            vec![
+                (
+                    Point {
+                        x: 100.0,
+                        y: 100.0,
+                        off_curve: None,
+                    },
+                    Point {
+                        x: 150.0,
+                        y: 50.0,
+                        off_curve: None,
+                    },
+                ),
+                (
+                    Point {
+                        x: 150.0,
+                        y: 50.0,
+                        off_curve: None,
+                    },
+                    Point {
+                        x: 200.0,
+                        y: 100.0,
+                        off_curve: None,
+                    },
+                ),
+            ]
+        );
+        assert_eq!(
+            stroke3.get_box(),
+            Bounds {
+                min_point: Point {
+                    x: 100.0,
+                    y: 50.0,
+                    off_curve: None,
+                },
+                max_point: Point {
+                    x: 200.0,
+                    y: 100.0,
+                    off_curve: None,
+                },
+            }
+        )
+    }
+
+    #[test]
+    fn test_cross() {
+        let stroke4 = Stroke::new(1.0, 0.0, 0.0, 0.0, 0.0, 100.0, 100.0, 0.0, 0.0, 0.0, 0.0);
+
+        assert_eq!(stroke4.is_cross((50.0, 50.0), (150.0, 150.0)), false);
+        assert_eq!(stroke4.is_cross((200.0, 200.0), (300.0, 300.0)), false);
+        assert_eq!(stroke4.is_cross_box((25.0, 25.0), (75.0, 75.0)), true);
+        assert_eq!(stroke4.is_cross_box((200.0, 200.0), (300.0, 300.0)), false);
+    }
+
+    #[test]
+    fn test_stroke_stretch() {
+        let mut stroke6 = Stroke::new(1.0, 0.0, 0.0, 50.0, 50.0, 100.0, 100.0, 0.0, 0.0, 0.0, 0.0);
+
+        assert_eq!(
+            stroke6.get_box(),
+            Bounds {
+                min_point: Point {
+                    x: 50.0,
+                    y: 50.0,
+                    off_curve: None,
+                },
+                max_point: Point {
+                    x: 100.0,
+                    y: 100.0,
+                    off_curve: None,
+                },
+            }
+        );
+
+        stroke6.stretch((0.0, 0.0), (0.0, 0.0), (0.0, 0.0), (200.0, 200.0));
+
+        assert_eq!(
+            stroke6.get_box(),
+            Bounds {
+                min_point: Point {
+                    x: 50.0,
+                    y: 50.0,
+                    off_curve: None,
+                },
+                max_point: Point {
+                    x: 100.0,
+                    y: 100.0,
+                    off_curve: None,
+                },
+            }
+        );
+    }
+
+    #[test]
+    fn test_edge_case() {
+        let stroke7 = Stroke::new(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+
+        assert_eq!(stroke7.get_control_segments(), vec![]);
+        assert_eq!(
+            stroke7.get_box(),
+            Bounds {
+                min_point: Point {
+                    x: f64::INFINITY,
+                    y: f64::INFINITY,
+                    off_curve: None,
+                },
+                max_point: Point {
+                    x: f64::NEG_INFINITY,
+                    y: f64::NEG_INFINITY,
+                    off_curve: None,
+                },
+            }
+        );
+    }
+
+    #[test]
+    fn test_large_number() {
+        let stroke8 = Stroke::new(
+            1.0, 0.0, 0.0, 1000.0, 1000.0, 2000.0, 2000.0, 0.0, 0.0, 0.0, 0.0,
+        );
+
+        assert_eq!(
+            stroke8.get_box(),
+            Bounds {
+                min_point: Point {
+                    x: 1000.0,
+                    y: 1000.0,
+                    off_curve: None,
+                },
+                max_point: Point {
+                    x: 2000.0,
+                    y: 2000.0,
+                    off_curve: None,
+                },
+            }
+        );
+    }
+
+    #[test]
+    fn test_negtive_number() {
+        let stroke9 = Stroke::new(
+            1.0, 0.0, 0.0, -100.0, -100.0, -50.0, -50.0, 0.0, 0.0, 0.0, 0.0,
+        );
+
+        assert_eq!(
+            stroke9.get_box(),
+            Bounds {
+                min_point: Point {
+                    x: -100.0,
+                    y: -100.0,
+                    off_curve: None,
+                },
+                max_point: Point {
+                    x: -50.0,
+                    y: -50.0,
+                    off_curve: None,
+                },
+            }
+        );
     }
 }

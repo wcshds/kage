@@ -1,7 +1,8 @@
-pub mod font;
-pub mod pen;
-pub mod polygon;
-pub mod polygons;
-pub mod stroke;
-pub mod two_d;
-pub mod utils;
+pub(crate) mod component;
+pub(crate) mod font;
+pub(crate) mod pen;
+pub(crate) mod polygon;
+pub(crate) mod polygons;
+pub(crate) mod stroke;
+pub(crate) mod two_d;
+pub(crate) mod utils;

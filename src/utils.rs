@@ -1,5 +1,6 @@
 // rust can directly use f64::hypot to calculate the hypotenuse of a right triangle
 
+use core::f64;
 use std::ops::{Add, Mul, Neg, Sub};
 
 #[derive(Debug, Clone, Copy)]
@@ -127,6 +128,18 @@ pub struct Point {
 }
 
 impl Point {
+    pub(crate) const INFINITY: Self = Point {
+        x: f64::INFINITY,
+        y: f64::INFINITY,
+        off_curve: None,
+    };
+
+    pub(crate) const NEG_INFINITY: Self = Point {
+        x: f64::NEG_INFINITY,
+        y: f64::NEG_INFINITY,
+        off_curve: None,
+    };
+
     pub(crate) fn new(x: f64, y: f64, off_curve: Option<bool>) -> Self {
         Self { x, y, off_curve }
     }
@@ -144,6 +157,30 @@ impl Point {
             off_curve: Some(off_curve),
             ..self
         }
+    }
+
+    pub(crate) fn min(&self, other: Point) -> Point {
+        Point::new(
+            self.x.min(other.x),
+            self.y.min(other.y),
+            if self.off_curve == other.off_curve {
+                self.off_curve
+            } else {
+                None
+            },
+        )
+    }
+
+    pub(crate) fn max(&self, other: Point) -> Point {
+        Point::new(
+            self.x.max(other.x),
+            self.y.max(other.y),
+            if self.off_curve == other.off_curve {
+                self.off_curve
+            } else {
+                None
+            },
+        )
     }
 }
 
@@ -230,9 +267,9 @@ impl Mul<Point> for f64 {
 impl PartialEq for Point {
     fn eq(&self, other: &Self) -> bool {
         let error = 1e-6;
-        (self.x - other.x).abs() <= error
-            && (self.y - other.y).abs() <= error
-            && self.off_curve == other.off_curve
+        (self.x == other.x && self.y == other.y)
+            || ((self.x - other.x).abs() <= error && (self.y - other.y).abs() <= error)
+                && self.off_curve == other.off_curve
     }
 }
 
@@ -247,6 +284,12 @@ impl From<(f64, f64)> for Point {
 impl From<(f64, f64, bool)> for Point {
     fn from(value: (f64, f64, bool)) -> Self {
         Point::new(value.0, value.1, Some(value.2))
+    }
+}
+
+impl From<(f64, f64, Option<bool>)> for Point {
+    fn from(value: (f64, f64, Option<bool>)) -> Self {
+        Point::new(value.0, value.1, value.2)
     }
 }
 
