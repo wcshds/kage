@@ -323,6 +323,12 @@ pub fn normalize(vector: Vector, magnitude: f64) -> Vector {
     Vector::new(vector.x * factor, vector.y * factor)
 }
 
+// P1: start_point, P2: control_point, P3: end_point, t: progress
+// Q1 = (1 - t) * P1 + t * P2
+// Q2 = (1 - t) * P2 + t * P3
+// Q3 = (1 - t) * Q1 + t * Q2
+//    = (1 - t) * ( (1 - t) * P1 + t * P2 ) + t * ( (1 - t) * P2 + t * P3 )
+//    = (1 - t) ** 2 * P1 + 2 * t *  (1 - t) * P2 + t ** 2 * P3
 fn quadratic_bezier<P1, P2, P3>(
     start_point: P1,
     control_point: P2,
@@ -345,6 +351,10 @@ where
         + (progress * progress) * end_point
 }
 
+// d/dt(quadratic_bezier) = - 2 *  (1 - t) * P1 + ( 2 * (1 - t) - 2 * t ) * P2
+//                            + 2 * t * P3
+//                        = 2 * (1 - t) * (-P1 + P2) + 2 * t * (-P2 + P3)
+//                        = 2 * ( -P1 + P2 + t * (P1 - 2 * P2 + P3) )
 /// Return d/dt(quadratic_bezier)
 fn quadratic_bezier_derivative<P1, P2, P3>(
     start_point: P1,
@@ -364,6 +374,21 @@ where
     2.0 * (progress * (start_point - 2.0 * control_point + end_point) - start_point + control_point)
 }
 
+// P1: start_point, P2: control_point, P3: end_point, t: progress
+// Q1 = (1 - t) * P1 + t * P2
+// Q2 = (1 - t) * P2 + t * P3
+// Q3 = (1 - t) * P3 + t * P4
+// Q4 = (1 - t) * Q1 + t * Q2
+//    = (1 - t) * ( (1 - t) * P1 + t * P2 ) + t * ( (1 - t) * P2 + t * P3 )
+//    = (1 - t) ** 2 * P1 + 2 * t *  (1 - t) * P2 + t ** 2 * P3
+// Q5 = (1 - t) * Q2 + t * Q3
+//    = (1 - t) * ( (1 - t) * P2 + t * P3 ) + t * ( (1 - t) * P3 + t * P4 )
+//    = (1 - t) ** 2 * P2 + 2 * t *  (1 - t) * P3 + t ** 2 * P4
+// Q6 = (1 - t) * Q4 + t * Q5
+//    = (1 - t) ** 3 * P1 + 2 * t * (1 - t) ** 2 * P2 + t ** 2 * (1 - t) * P3
+//         + t * (1 - t) ** 2 * P2 + 2 * t ** 2 * (1 - t) * P3 + t ** 3 * P4
+//    = (1 - t) ** 3 * P1 + 3 * t * (1 - t) ** 2 * P2
+//         + 3 * t ** 2 * (1 - t) * P3 + t ** 3 * P4
 fn cubic_bezier<P1, P2, P3, P4>(
     start_point: P1,
     control_point_1: P2,

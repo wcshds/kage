@@ -1,4 +1,5 @@
 pub(crate) mod component;
+pub(crate) mod curve;
 pub(crate) mod font;
 pub(crate) mod pen;
 pub(crate) mod polygon;
