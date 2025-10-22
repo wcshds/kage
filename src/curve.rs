@@ -7,6 +7,7 @@ struct SplitResult {
     segments: [[Point; 3]; 2],
 }
 
+// FIXME: may be redundant
 fn split_quadratic_bezier_curve(
     start_point: Point,
     control_point: Point,
