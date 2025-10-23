@@ -216,6 +216,14 @@ impl Add<Point> for Point {
     }
 }
 
+impl Add<Vector> for Point {
+    type Output = Point;
+
+    fn add(self, rhs: Vector) -> Self::Output {
+        Point::new(self.x + rhs.x, self.y + rhs.y, None)
+    }
+}
+
 impl Sub<f64> for Point {
     type Output = Point;
 
@@ -237,6 +245,14 @@ impl Sub<Point> for Point {
 
     fn sub(self, rhs: Point) -> Self::Output {
         Point::new(self.x - rhs.x, self.y - rhs.y, self.off_curve)
+    }
+}
+
+impl Sub<Vector> for Point {
+    type Output = Point;
+
+    fn sub(self, rhs: Vector) -> Self::Output {
+        Point::new(self.x - rhs.x, self.y - rhs.y, None)
     }
 }
 
@@ -313,7 +329,8 @@ impl From<&Point> for Point {
 
 pub const EPSILON: f64 = 1e-5;
 
-pub fn normalize(vector: Vector, magnitude: f64) -> Vector {
+pub fn normalize<V: Into<Vector>>(vector: V, magnitude: f64) -> Vector {
+    let vector: Vector = vector.into();
     if vector.x == 0.0 && vector.y == 0.0 {
         return Vector::new(magnitude.copysign(vector.x), 0.0);
     }
@@ -323,13 +340,73 @@ pub fn normalize(vector: Vector, magnitude: f64) -> Vector {
     Vector::new(vector.x * factor, vector.y * factor)
 }
 
+pub(crate) enum CurveSampler {
+    Quadratic {
+        start_point: Point,
+        control_point: Point,
+        end_point: Point,
+    },
+    Cubic {
+        start_point: Point,
+        control_point_1: Point,
+        control_point_2: Point,
+        end_point: Point,
+    },
+}
+
+impl CurveSampler {
+    pub(crate) fn sample(&self, progress: f64) -> Point {
+        match self {
+            Self::Quadratic {
+                start_point,
+                control_point,
+                end_point,
+            } => quadratic_bezier(start_point, control_point, end_point, progress),
+            Self::Cubic {
+                start_point,
+                control_point_1,
+                control_point_2,
+                end_point,
+            } => cubic_bezier(
+                start_point,
+                control_point_1,
+                control_point_2,
+                end_point,
+                progress,
+            ),
+        }
+    }
+
+    pub(crate) fn derivative(&self, progress: f64) -> Vector {
+        match self {
+            Self::Quadratic {
+                start_point,
+                control_point,
+                end_point,
+            } => quadratic_bezier_derivative(start_point, control_point, end_point, progress),
+            Self::Cubic {
+                start_point,
+                control_point_1,
+                control_point_2,
+                end_point,
+            } => cubic_bezier_derivative(
+                start_point,
+                control_point_1,
+                control_point_2,
+                end_point,
+                progress,
+            ),
+        }
+    }
+}
+
 // P1: start_point, P2: control_point, P3: end_point, t: progress
 // Q1 = (1 - t) * P1 + t * P2
 // Q2 = (1 - t) * P2 + t * P3
 // Q3 = (1 - t) * Q1 + t * Q2
 //    = (1 - t) * ( (1 - t) * P1 + t * P2 ) + t * ( (1 - t) * P2 + t * P3 )
 //    = (1 - t) ** 2 * P1 + 2 * t *  (1 - t) * P2 + t ** 2 * P3
-fn quadratic_bezier<P1, P2, P3>(
+pub(crate) fn quadratic_bezier<P1, P2, P3>(
     start_point: P1,
     control_point: P2,
     end_point: P3,
@@ -361,7 +438,7 @@ fn quadratic_bezier_derivative<P1, P2, P3>(
     control_point: P2,
     end_point: P3,
     progress: f64,
-) -> Point
+) -> Vector
 where
     P1: Into<Point>,
     P2: Into<Point>,
@@ -371,7 +448,9 @@ where
     let control_point = control_point.into();
     let end_point = end_point.into();
 
-    2.0 * (progress * (start_point - 2.0 * control_point + end_point) - start_point + control_point)
+    (2.0 * (progress * (start_point - 2.0 * control_point + end_point) - start_point
+        + control_point))
+        .into()
 }
 
 // P1: start_point, P2: control_point, P3: end_point, t: progress
@@ -389,7 +468,7 @@ where
 //         + t * (1 - t) ** 2 * P2 + 2 * t ** 2 * (1 - t) * P3 + t ** 3 * P4
 //    = (1 - t) ** 3 * P1 + 3 * t * (1 - t) ** 2 * P2
 //         + 3 * t ** 2 * (1 - t) * P3 + t ** 3 * P4
-fn cubic_bezier<P1, P2, P3, P4>(
+pub(crate) fn cubic_bezier<P1, P2, P3, P4>(
     start_point: P1,
     control_point_1: P2,
     control_point_2: P3,
@@ -421,7 +500,7 @@ fn cubic_bezier_derivative<P1, P2, P3, P4>(
     control_point_2: P3,
     end_point: P4,
     progress: f64,
-) -> Point
+) -> Vector
 where
     P1: Into<Point>,
     P2: Into<Point>,
@@ -433,11 +512,12 @@ where
     let control_point_2 = control_point_2.into();
     let end_point = end_point.into();
 
-    3.0 * (progress
+    (3.0 * (progress
         * (progress * (-start_point + 3.0 * control_point_1 - 3.0 * control_point_2 + end_point)
             + 2.0 * (start_point - 2.0 * control_point_1 + control_point_2))
         - start_point
-        + control_point_1)
+        + control_point_1))
+        .into()
 }
 
 fn ternary_search_min(func: impl Fn(f64) -> f64, left: f64, right: f64, epsilon: f64) -> f64 {

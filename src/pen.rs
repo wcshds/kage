@@ -28,28 +28,32 @@ impl Pen {
 
     pub fn set_left(&mut self, other_x: f64, other_y: f64) -> &mut Self {
         let other_point: Point = (other_x, other_y).into();
-        let Vector { x: dx, y: dy } = normalize((other_point - self.global_point).into(), 1.0);
+        let Vector { x: dx, y: dy } =
+            normalize::<Vector>((other_point - self.global_point).into(), 1.0);
 
         self.set_matrix2(-dx, -dy)
     }
 
     pub fn set_right(&mut self, other_x: f64, other_y: f64) -> &mut Self {
         let other_point: Point = (other_x, other_y).into();
-        let Vector { x: dx, y: dy } = normalize((other_point - self.global_point).into(), 1.0);
+        let Vector { x: dx, y: dy } =
+            normalize::<Vector>((other_point - self.global_point).into(), 1.0);
 
         self.set_matrix2(dx, dy)
     }
 
     pub fn set_up(&mut self, other_x: f64, other_y: f64) -> &mut Self {
         let other_point: Point = (other_x, other_y).into();
-        let Vector { x: dx, y: dy } = normalize((other_point - self.global_point).into(), 1.0);
+        let Vector { x: dx, y: dy } =
+            normalize::<Vector>((other_point - self.global_point).into(), 1.0);
 
         self.set_matrix2(-dy, dx)
     }
 
     pub fn set_down(&mut self, other_x: f64, other_y: f64) -> &mut Self {
         let other_point: Point = (other_x, other_y).into();
-        let Vector { x: dx, y: dy } = normalize((other_point - self.global_point).into(), 1.0);
+        let Vector { x: dx, y: dy } =
+            normalize::<Vector>((other_point - self.global_point).into(), 1.0);
 
         self.set_matrix2(dy, -dx)
     }
