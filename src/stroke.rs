@@ -180,10 +180,10 @@ struct Stroke {
     stroke_type: StrokeType,
     head_shape: EndType,
     tail_shape: EndType,
-    point1: Point,
-    point2: Point,
-    point3: Point,
-    point4: Point,
+    point_1: Point,
+    point_2: Point,
+    point_3: Point,
+    point_4: Point,
 }
 
 impl Stroke {
@@ -203,19 +203,19 @@ impl Stroke {
         let stroke_type = StrokeType::new(field1);
         let head_shape = EndType::new(field2);
         let tail_shape = EndType::new(field3);
-        let point1 = (field4, field5, None).into();
-        let point2 = (field6, field7, None).into();
-        let point3 = (field8, field9, None).into();
-        let point4 = (field10, field11, None).into();
+        let point_1 = (field4, field5, None).into();
+        let point_2 = (field6, field7, None).into();
+        let point_3 = (field8, field9, None).into();
+        let point_4 = (field10, field11, None).into();
 
         Self {
             stroke_type,
             head_shape,
             tail_shape,
-            point1,
-            point2,
-            point3,
-            point4,
+            point_1,
+            point_2,
+            point_3,
+            point_4,
         }
     }
 
@@ -223,19 +223,19 @@ impl Stroke {
         let opt = self.stroke_type.opt;
 
         if opt != 0 {
-            return vec![(self.point1, self.point2)];
+            return vec![(self.point_1, self.point_2)];
         }
 
         match self.stroke_type.kind {
-            StrokeKind::StraightLine => vec![(self.point1, self.point2)],
+            StrokeKind::StraightLine => vec![(self.point_1, self.point_2)],
             StrokeKind::Curve | StrokeKind::BendLine | StrokeKind::OtsuCurve => {
-                vec![(self.point1, self.point2), (self.point2, self.point3)]
+                vec![(self.point_1, self.point_2), (self.point_2, self.point_3)]
             }
             StrokeKind::ComplexCurve | StrokeKind::VerticalSlash => {
                 vec![
-                    (self.point1, self.point2),
-                    (self.point2, self.point3),
-                    (self.point3, self.point4),
+                    (self.point_1, self.point_2),
+                    (self.point_2, self.point_3),
+                    (self.point_3, self.point_4),
                 ]
             }
             StrokeKind::Unknown => vec![],
@@ -274,11 +274,11 @@ impl Stroke {
         P3: Into<Point> + Copy,
         P4: Into<Point> + Copy,
     {
-        self.point1 = stretch(dest_pivot, src_pivot, self.point1, min_point, max_point);
-        self.point2 = stretch(dest_pivot, src_pivot, self.point2, min_point, max_point);
+        self.point_1 = stretch(dest_pivot, src_pivot, self.point_1, min_point, max_point);
+        self.point_2 = stretch(dest_pivot, src_pivot, self.point_2, min_point, max_point);
         // if !(this.a1_100 === 99 && this.a1_opt === 0) {  }
-        self.point3 = stretch(dest_pivot, src_pivot, self.point3, min_point, max_point);
-        self.point4 = stretch(dest_pivot, src_pivot, self.point4, min_point, max_point);
+        self.point_3 = stretch(dest_pivot, src_pivot, self.point_3, min_point, max_point);
+        self.point_4 = stretch(dest_pivot, src_pivot, self.point_4, min_point, max_point);
     }
 
     fn get_box(&self) -> Bounds {
@@ -293,10 +293,10 @@ impl Stroke {
 
         // let a1 = if self.a1_opt == 0 { self.a1_100 } else { 6 };
         if self.stroke_type.opt != 0 {
-            update_bounds(&mut min_point, &mut max_point, self.point1);
-            update_bounds(&mut min_point, &mut max_point, self.point2);
-            update_bounds(&mut min_point, &mut max_point, self.point3);
-            update_bounds(&mut min_point, &mut max_point, self.point4);
+            update_bounds(&mut min_point, &mut max_point, self.point_1);
+            update_bounds(&mut min_point, &mut max_point, self.point_2);
+            update_bounds(&mut min_point, &mut max_point, self.point_3);
+            update_bounds(&mut min_point, &mut max_point, self.point_4);
 
             return Bounds {
                 min_point,
@@ -307,19 +307,19 @@ impl Stroke {
         match self.stroke_type.kind {
             StrokeKind::Unknown if self.stroke_type.base == 0 => {}
             StrokeKind::StraightLine => {
-                update_bounds(&mut min_point, &mut max_point, self.point1);
-                update_bounds(&mut min_point, &mut max_point, self.point2);
+                update_bounds(&mut min_point, &mut max_point, self.point_1);
+                update_bounds(&mut min_point, &mut max_point, self.point_2);
             }
             StrokeKind::Curve | StrokeKind::BendLine | StrokeKind::OtsuCurve => {
-                update_bounds(&mut min_point, &mut max_point, self.point1);
-                update_bounds(&mut min_point, &mut max_point, self.point2);
-                update_bounds(&mut min_point, &mut max_point, self.point3);
+                update_bounds(&mut min_point, &mut max_point, self.point_1);
+                update_bounds(&mut min_point, &mut max_point, self.point_2);
+                update_bounds(&mut min_point, &mut max_point, self.point_3);
             }
             _ => {
-                update_bounds(&mut min_point, &mut max_point, self.point1);
-                update_bounds(&mut min_point, &mut max_point, self.point2);
-                update_bounds(&mut min_point, &mut max_point, self.point3);
-                update_bounds(&mut min_point, &mut max_point, self.point4);
+                update_bounds(&mut min_point, &mut max_point, self.point_1);
+                update_bounds(&mut min_point, &mut max_point, self.point_2);
+                update_bounds(&mut min_point, &mut max_point, self.point_3);
+                update_bounds(&mut min_point, &mut max_point, self.point_4);
             }
         }
 
@@ -463,22 +463,22 @@ mod test {
                     opt: 0,
                     kind: EndKind::HorizontalConnection,
                 },
-                point1: Point {
+                point_1: Point {
                     x: 32.0,
                     y: 31.0,
                     off_curve: None,
                 },
-                point2: Point {
+                point_2: Point {
                     x: 176.0,
                     y: 31.0,
                     off_curve: None,
                 },
-                point3: Point {
+                point_3: Point {
                     x: 0.0,
                     y: 0.0,
                     off_curve: None,
                 },
-                point4: Point {
+                point_4: Point {
                     x: 0.0,
                     y: 0.0,
                     off_curve: None,

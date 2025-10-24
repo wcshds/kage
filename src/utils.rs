@@ -1,7 +1,7 @@
 // rust can directly use f64::hypot to calculate the hypotenuse of a right triangle
 
 use core::f64;
-use std::ops::{Add, Mul, Neg, Sub};
+use std::ops::{Add, Div, Mul, Neg, Sub};
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct Vector {
@@ -277,6 +277,22 @@ impl Mul<Point> for f64 {
 
     fn mul(self, rhs: Point) -> Self::Output {
         Point::new(self * rhs.x, self * rhs.y, rhs.off_curve)
+    }
+}
+
+impl Div<f64> for Point {
+    type Output = Point;
+
+    fn div(self, rhs: f64) -> Self::Output {
+        Point::new(self.x / rhs, self.y / rhs, self.off_curve)
+    }
+}
+
+impl Div<Point> for f64 {
+    type Output = Point;
+
+    fn div(self, rhs: Point) -> Self::Output {
+        Point::new(self / rhs.x, self / rhs.y, rhs.off_curve)
     }
 }
 

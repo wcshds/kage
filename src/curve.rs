@@ -101,17 +101,69 @@ where
     result
 }
 
+#[derive(Debug)]
+struct QuadraticBezierFitResult {
+    start_point: Point,
+    control_point: Point,
+    end_point: Point,
+}
+
+fn fit_quadratic_bezier(points: &[Point]) -> Option<QuadraticBezierFitResult> {
+    if points.len() == 2 {
+        return Some(QuadraticBezierFitResult {
+            start_point: points[0],
+            control_point: (points[0] + points[1]) * 0.5,
+            end_point: points[1],
+        });
+    } else if points.len() <= 1 {
+        return None;
+    }
+
+    let start_point = points[0];
+    let end_point = points[points.len() - 1];
+
+    let mut numerator: Point = (0.0, 0.0).into();
+    let mut denominator = 0.0;
+    for (step, point) in (1..(points.len() - 1)).zip(points.iter().skip(1)) {
+        let progress = step as f64 / (points.len() - 1) as f64;
+        let remain = 1.0 - progress;
+        let remain_squared = remain * remain;
+        let progress_squared = progress * progress;
+        let progress_times_remain = progress * remain;
+
+        numerator = numerator
+            + progress_times_remain
+                * (point.clone() - remain_squared * start_point - progress_squared * end_point);
+        denominator += 2.0 * progress_times_remain * progress_times_remain;
+    }
+
+    if denominator == 0.0 {
+        return None;
+    }
+
+    let control_point = numerator / denominator;
+    Some(QuadraticBezierFitResult {
+        start_point,
+        control_point: (control_point.x, control_point.y, true).into(),
+        end_point,
+    })
+}
+
 #[cfg(test)]
 mod test {
-    use crate::{curve::generate_fatten_curve, polygon::Polygon, polygons::Polygons};
+    use crate::{
+        curve::{fit_quadratic_bezier, generate_fatten_curve},
+        polygon::Polygon,
+        polygons::Polygons,
+    };
 
     #[test]
     fn test_bold_straight_line() {
         let result = generate_fatten_curve(
-            (0.0, 0.0),   // 起點 (x1, y1)
-            (50.0, 0.0),  // 控制點1 (sx1, sy1) - 與控制點2相同，形成直線
-            (50.0, 0.0),  // 控制點2 (sx2, sy2) - 與控制點1相同，形成直線
-            (100.0, 0.0), // 終點 (x2, y2)
+            (0.0, 0.0),
+            (50.0, 0.0),
+            (50.0, 0.0),
+            (100.0, 0.0),
             50,
             |_| 10.0,
         );
@@ -136,5 +188,31 @@ mod test {
         polygons.push(Polygon::new(points));
 
         println!("{}", polygons.generate_svg(true));
+    }
+
+    #[test]
+    fn test_fit_parabola() {
+        let result = fit_quadratic_bezier(&vec![
+            (0.0, 0.0).into(),
+            (1.0, 1.0).into(),
+            (2.0, 4.0).into(),
+            (3.0, 9.0).into(),
+            (4.0, 16.0).into(),
+        ]);
+
+        println!("{:#?}", result);
+    }
+
+    #[test]
+    fn test_fit_arc() {
+        let result = fit_quadratic_bezier(&vec![
+            [0.0, 0.0].into(),
+            [0.5, 0.866].into(),
+            [1.0, 1.732].into(),
+            [1.5, 2.598].into(),
+            [2.0, 3.464].into(),
+        ]);
+
+        println!("{:#?}", result);
     }
 }
