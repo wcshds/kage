@@ -343,7 +343,7 @@ impl From<&Point> for Point {
     }
 }
 
-pub const EPSILON: f64 = 1e-5;
+const EPSILON: f64 = 1e-8;
 
 pub fn normalize<V: Into<Vector>>(vector: V, magnitude: f64) -> Vector {
     let vector: Vector = vector.into();
@@ -562,6 +562,18 @@ fn ternary_search_max(func: impl Fn(f64) -> f64, left: f64, right: f64, epsilon:
 pub(crate) fn round(num: f64, decimals: i32) -> f64 {
     let factor = 10.0f64.powi(decimals);
     (num * factor).round() / factor
+}
+
+pub(crate) fn is_quadratic<P1, P2>(control_point_1: P1, control_point_2: P2) -> bool
+where
+    P1: Into<Point>,
+    P2: Into<Point>,
+{
+    let control_point_1: Point = control_point_1.into();
+    let control_point_2: Point = control_point_2.into();
+
+    (control_point_1.x - control_point_2.x).abs() <= EPSILON
+        && (control_point_1.y - control_point_2.y).abs() <= EPSILON
 }
 
 #[cfg(test)]

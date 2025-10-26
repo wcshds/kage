@@ -1,14 +1,14 @@
-use crate::utils::{CurveSampler, Point, normalize, round};
+use crate::utils::{CurveSampler, Point, is_quadratic, normalize, round};
 
 const INITIAL_RATE: f64 = 0.5;
 
-struct SplitResult {
-    index: usize,
-    segments: [[Point; 3]; 2],
+pub(crate) struct SplitResult {
+    pub(crate) index: usize,
+    pub(crate) segments: [[Point; 3]; 2],
 }
 
 // FIXME: may be redundant
-fn split_quadratic_bezier_curve(
+pub(crate) fn split_quadratic_bezier_curve(
     start_point: Point,
     control_point: Point,
     end_point: Point,
@@ -36,12 +36,13 @@ fn split_quadratic_bezier_curve(
 }
 
 #[derive(Debug)]
-struct FattenResult {
-    left: Vec<Point>,
-    right: Vec<Point>,
+pub(crate) struct FattenResult {
+    pub(crate) left: Vec<Point>,
+    pub(crate) right: Vec<Point>,
 }
 
-fn generate_fatten_curve<P1, P2, P3, P4>(
+// FIXME: add more tests
+pub(crate) fn generate_fatten_curve<P1, P2, P3, P4>(
     start_point: P1,
     control_point_1: P2,
     control_point_2: P3,
@@ -64,9 +65,8 @@ where
         left: Vec::with_capacity(1000 / k_rate + 1),
         right: Vec::with_capacity(1000 / k_rate + 1),
     };
-    let is_quadratic = control_point_1 == control_point_2;
 
-    let curve_sampler = if is_quadratic {
+    let curve_sampler = if is_quadratic(control_point_1, control_point_2) {
         CurveSampler::Quadratic {
             start_point,
             control_point: control_point_1,
@@ -102,17 +102,18 @@ where
 }
 
 #[derive(Debug)]
-struct QuadraticBezierFitResult {
-    start_point: Point,
-    control_point: Point,
-    end_point: Point,
+pub(crate) struct QuadraticBezierFitResult {
+    pub(crate) start_point: Point,
+    pub(crate) control_point: Point,
+    pub(crate) end_point: Point,
 }
 
-fn fit_quadratic_bezier(points: &[Point]) -> Option<QuadraticBezierFitResult> {
+pub(crate) fn fit_quadratic_bezier(points: &[Point]) -> Option<QuadraticBezierFitResult> {
     if points.len() == 2 {
+        let temp = (points[0] + points[1]) * 0.5;
         return Some(QuadraticBezierFitResult {
             start_point: points[0],
-            control_point: (points[0] + points[1]) * 0.5,
+            control_point: (temp.x, temp.y, true).into(),
             end_point: points[1],
         });
     } else if points.len() <= 1 {

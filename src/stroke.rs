@@ -37,7 +37,7 @@ where
 }
 
 #[derive(Debug, PartialEq)]
-enum StrokeKind {
+pub(crate) enum StrokeKind {
     // 1 ~ 6: Stroke Lines
     /// 直線
     StraightLine = 1, // 2 control point
@@ -64,10 +64,10 @@ enum StrokeKind {
 }
 
 #[derive(Debug, PartialEq)]
-struct StrokeType {
-    base: u32,
-    opt: u32,
-    kind: StrokeKind,
+pub(crate) struct StrokeType {
+    pub(crate) base: u32,
+    pub(crate) opt: u32,
+    pub(crate) kind: StrokeKind,
 }
 
 impl StrokeType {
@@ -94,7 +94,7 @@ impl StrokeType {
 }
 
 #[derive(Debug, PartialEq)]
-enum EndKind {
+pub(crate) enum EndKind {
     /// 開放
     Free = 0,
     /// 連接（橫向）
@@ -127,19 +127,28 @@ enum EndKind {
     Stop = 8,
 
     Unknown,
+
+    Temp14 = 14,
+    Temp15 = 15,
 }
 
 #[derive(Debug, PartialEq)]
-struct EndType {
-    base: u32,
-    opt: u32,
-    kind: EndKind,
+pub(crate) struct EndType {
+    pub(crate) base: u32,
+    pub(crate) opt: u32,
+    pub(crate) opt_1: u32,
+    pub(crate) opt_2: u32,
+    pub(crate) opt_3: u32,
+    pub(crate) kind: EndKind,
 }
 
 impl EndType {
     fn new(num: f64) -> Self {
         let num_base = num as u32 % 100;
         let num_opt = (num / 100.0).floor() as u32;
+        let num_opt_1 = num_opt % 10;
+        let num_opt_2 = (num_opt / 10) % 10;
+        let num_opt_3 = num_opt / 100;
 
         let kind = match num_base {
             0 => EndKind::Free,
@@ -157,12 +166,17 @@ impl EndType {
             32 => EndKind::VerticalConnection,
             313 => EndKind::BottomLeftZhOld,
             413 => EndKind::BottomLeftZhNew,
+            14 => EndKind::Temp14,
+            15 => EndKind::Temp15,
             _ => EndKind::Unknown,
         };
 
         EndType {
             base: num_base,
             opt: num_opt,
+            opt_1: num_opt_1,
+            opt_2: num_opt_2,
+            opt_3: num_opt_3,
             kind,
         }
     }
@@ -456,11 +470,17 @@ mod test {
                 head_shape: EndType {
                     base: 0,
                     opt: 0,
+                    opt_1: 0,
+                    opt_2: 0,
+                    opt_3: 0,
                     kind: EndKind::Free,
                 },
                 tail_shape: EndType {
                     base: 2,
                     opt: 0,
+                    opt_1: 0,
+                    opt_2: 0,
+                    opt_3: 0,
                     kind: EndKind::HorizontalConnection,
                 },
                 point_1: Point {
