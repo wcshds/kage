@@ -14,7 +14,11 @@ impl Vector {
         Self { x, y }
     }
 
-    fn length(&self) -> f64 {
+    pub(crate) fn length(&self) -> f64 {
+        f64::hypot(self.x, self.y)
+    }
+
+    pub(crate) fn hypot(&self) -> f64 {
         f64::hypot(self.x, self.y)
     }
 }

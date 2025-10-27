@@ -6,15 +6,14 @@ use crate::{
     polygon::Polygon,
     polygons::Polygons,
     stroke::{EndKind, EndType},
-    utils::{Point, is_quadratic},
+    utils::{Point, Vector, is_quadratic},
 };
 
-const THINNESS_RATIO: f64 = 0.5;
 const DIVIDE_INITIAL_RATE: f64 = 0.5;
 
 struct Ming {
     /// must divide 1000
-    k_rate: f64,
+    k_rate: usize,
     /// Half of the width of mincho-style horizontal (thinner) strokes.
     /// origin name: kMinWidthY
     k_min_width_horizontal: f64,
@@ -91,11 +90,12 @@ impl Ming {
         let is_quadratic = is_quadratic(control_point_1, control_point_2);
 
         if is_quadratic && self.k_use_curve {
+            let thinness_ratio = 0.5;
             let width_delta_func = |progress: f64| -> f64 {
                 match (&head_shape.kind, &tail_shape.kind) {
-                    (&EndKind::Narrow, &EndKind::Free) => progress * THINNESS_RATIO * 1.1,
-                    (&EndKind::Narrow, _) => progress * THINNESS_RATIO,
-                    (_, &EndKind::Narrow) => (1.0 - progress) * THINNESS_RATIO,
+                    (&EndKind::Narrow, &EndKind::Free) => progress * thinness_ratio * 1.1,
+                    (&EndKind::Narrow, _) => progress * thinness_ratio,
+                    (_, &EndKind::Narrow) => (1.0 - progress) * thinness_ratio,
                     _ if start_width_reduction > 0.0 => {
                         // ???
                         let start_reduction = (start_width_reduction / 2.0)
@@ -198,6 +198,146 @@ impl Ming {
             polygon_2.reverse();
             polygon_1.concat(polygon_2);
             polygons.push(polygon_1);
+        } else {
+            let mut thinness_ratio = 0.5;
+            let hypot = Vector::from(end_point - start_point).hypot();
+            if hypot < 50.0 {
+                thinness_ratio += 0.4 * (1.0 - hypot / 50.0);
+            }
+
+            let width_delta_func = |progress: f64| -> f64 {
+                match (&head_shape.kind, &tail_shape.kind) {
+                    (&EndKind::Narrow | &EndKind::RoofedNarrowEntry, &EndKind::Free) => {
+                        progress.powf(thinness_ratio) * self.k_l2rdfatten
+                    }
+                    (&EndKind::Narrow | &EndKind::RoofedNarrowEntry, _) => {
+                        if is_quadratic {
+                            progress.powf(thinness_ratio)
+                        } else {
+                            progress.powf(thinness_ratio) * 0.7
+                        }
+                    }
+                    (_, &EndKind::Narrow) => (1.0 - progress) * thinness_ratio,
+                    _ if is_quadratic
+                        && (start_width_reduction > 0.0 || width_change_rate > 0.0) =>
+                    {
+                        // ???
+                        ((self.k_min_width_vertical - start_width_reduction / 2.0)
+                            - (width_change_rate - start_width_reduction) / 2.0 * progress)
+                            / self.k_min_width_vertical
+                    }
+                    _ => 1.0,
+                }
+            };
+
+            let FattenResult {
+                left: left_sampled_points,
+                right: right_sampled_points,
+            } = generate_fatten_curve(
+                start_point,
+                control_point_1,
+                control_point_2,
+                end_point,
+                self.k_rate,
+                |progress| {
+                    let mut width_delta = (&width_delta_func)(progress);
+
+                    if width_delta < 0.15 {
+                        width_delta = 0.15;
+                    }
+
+                    self.k_min_width_vertical * width_delta
+                },
+            );
+
+            let mut polygon_1 = Polygon::new(left_sampled_points);
+            let mut polygon_2 = Polygon::new(right_sampled_points);
+
+            if (matches!(head_shape.kind, EndKind::VerticalConnection) && head_shape.opt_1 == 1)
+                || (matches!(tail_shape.kind, EndKind::TopRightCorner) && tail_shape.opt_1 == 0)
+                    && ((is_quadratic && start_point.y > end_point.y)
+                        || (!is_quadratic && start_point.x > control_point_1.x))
+            {
+                polygon_1.floor();
+                polygon_2.floor();
+
+                for index in 0..polygon_2.len() - 1 {
+                    let point_1 = polygon_2.get(index).unwrap();
+                    let point_2 = polygon_2.get(index + 1).unwrap();
+
+                    if point_1.y <= start_point.y && start_point.y <= point_2.y {
+                        let new_x_1 = point_2.x
+                            + (point_1.x - point_2.x) * (start_point.y - point_2.y)
+                                / (point_1.y - point_2.y);
+                        let new_y_1 = start_point.y;
+                        let point_3 = polygon_1.get(0).unwrap();
+                        let point_4 = polygon_1.get(1).unwrap();
+                        let new_x_2 = if (matches!(head_shape.kind, EndKind::VerticalConnection)
+                            && head_shape.opt_1 == 1)
+                        {
+                            point_3.x
+                                + (point_4.x - point_3.x) * (start_point.y - point_3.y)
+                                    / (point_4.y - point_3.y)
+                        } else {
+                            point_3.x
+                                + (point_4.x - point_3.x + 1.0) * (start_point.y - point_3.y)
+                                    / (point_4.y - point_3.y)
+                        };
+                        let new_y_2 = if (matches!(head_shape.kind, EndKind::VerticalConnection)
+                            && head_shape.opt_1 == 1)
+                        {
+                            start_point.y
+                        } else {
+                            start_point.y + 1.0
+                        };
+
+                        for _ in 0..index {
+                            polygon_2.shift();
+                        }
+
+                        polygon_2.set(0, new_x_1, new_y_1, Some(false)).unwrap();
+                        polygon_1.unshift(new_x_2, new_y_2, Some(false));
+                        break;
+                    }
+                }
+            }
+
+            polygon_2.reverse();
+            polygon_1.concat(polygon_2);
+            polygons.push(polygon_1);
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::font::ming::Ming;
+
+    fn init() -> Ming {
+        Ming {
+            k_rate: 100,
+            k_min_width_horizontal: 1.2,
+            k_min_width_triangle: 1.0, // todo
+            k_min_width_vertical: 3.6,
+            k_width: 3.0,
+            k_square_terminal: 1.8,
+            k_l2rdfatten: 1.1,
+            k_mage: 6.0,
+            k_use_curve: false,
+            k_adjust_kakato_l: vec![8.0, 5.0, 3.0, 1.0, 0.0],
+            k_adjust_kakato_r: vec![4.0, 3.0, 2.0, 1.0],
+            k_adjust_kakato_range_x: 12.0,
+            k_adjust_kakato_range_y: vec![1.0, 11.0, 14.0, 18.0],
+            k_adjust_kakato_step: 3.0,
+            k_adjust_uroko_x: vec![14.0, 12.0, 9.0, 7.0],
+            k_adjust_uroko_y: vec![7.0, 6.0, 5.0, 4.0],
+            k_adjust_uroko_length: vec![13.0, 21.0, 30.0],
+            k_adjust_uroko_length_step: 3.0,
+            k_adjust_uroko_line: vec![13.0, 15.0, 18.0],
+            k_adjust_uroko2_step: 1.0,   // todo
+            k_adjust_uroko2_length: 1.0, // todo
+            k_adjust_tate_step: 4.0,     // todo
+            k_adjust_mage_step: 5.0,     // todo
         }
     }
 }
