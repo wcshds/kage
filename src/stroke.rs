@@ -143,7 +143,7 @@ pub(crate) struct EndType {
 }
 
 impl EndType {
-    fn new(num: f64) -> Self {
+    pub(crate) fn new(num: f64) -> Self {
         let num_base = num as u32 % 100;
         let num_opt = (num / 100.0).floor() as u32;
         let num_opt_1 = num_opt % 10;

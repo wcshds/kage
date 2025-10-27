@@ -194,6 +194,7 @@ impl Ming {
                     (point_5.x, point_5.y, false).into(),
                 ])
             };
+            println!("polygon_2: {:#?}", polygon_2);
 
             polygon_2.reverse();
             polygon_1.concat(polygon_2);
@@ -311,33 +312,53 @@ impl Ming {
 
 #[cfg(test)]
 mod test {
-    use crate::font::ming::Ming;
+    use crate::{font::ming::Ming, polygons::Polygons, stroke::EndType};
 
     fn init() -> Ming {
         Ming {
             k_rate: 100,
-            k_min_width_horizontal: 1.2,
-            k_min_width_triangle: 1.0, // todo
-            k_min_width_vertical: 3.6,
-            k_width: 3.0,
-            k_square_terminal: 1.8,
+            k_min_width_horizontal: 2.0,
+            k_min_width_triangle: 2.0,
+            k_min_width_vertical: 6.0,
+            k_width: 5.0,
+            k_square_terminal: 3.0,
             k_l2rdfatten: 1.1,
-            k_mage: 6.0,
-            k_use_curve: false,
-            k_adjust_kakato_l: vec![8.0, 5.0, 3.0, 1.0, 0.0],
-            k_adjust_kakato_r: vec![4.0, 3.0, 2.0, 1.0],
-            k_adjust_kakato_range_x: 12.0,
-            k_adjust_kakato_range_y: vec![1.0, 11.0, 14.0, 18.0],
+            k_mage: 10.0,
+            k_use_curve: true,
+            k_adjust_kakato_l: vec![14.0, 9.0, 5.0, 2.0, 0.0],
+            k_adjust_kakato_r: vec![8.0, 6.0, 4.0, 2.0],
+            k_adjust_kakato_range_x: 20.0,
+            k_adjust_kakato_range_y: vec![1.0, 19.0, 24.0, 30.0],
             k_adjust_kakato_step: 3.0,
-            k_adjust_uroko_x: vec![14.0, 12.0, 9.0, 7.0],
-            k_adjust_uroko_y: vec![7.0, 6.0, 5.0, 4.0],
-            k_adjust_uroko_length: vec![13.0, 21.0, 30.0],
+            k_adjust_uroko_x: vec![24.0, 20.0, 16.0, 12.0],
+            k_adjust_uroko_y: vec![12.0, 11.0, 9.0, 8.0],
+            k_adjust_uroko_length: vec![22.0, 36.0, 50.0],
             k_adjust_uroko_length_step: 3.0,
-            k_adjust_uroko_line: vec![13.0, 15.0, 18.0],
-            k_adjust_uroko2_step: 1.0,   // todo
-            k_adjust_uroko2_length: 1.0, // todo
-            k_adjust_tate_step: 4.0,     // todo
-            k_adjust_mage_step: 5.0,     // todo
+            k_adjust_uroko_line: vec![22.0, 26.0, 30.0],
+            k_adjust_uroko2_step: 3.0,
+            k_adjust_uroko2_length: 40.0,
+            k_adjust_tate_step: 4.0,
+            k_adjust_mage_step: 5.0,
         }
+    }
+
+    #[test]
+    fn test_draw_curve_body() {
+        let ming = init();
+        let mut polygons = Polygons::new();
+
+        ming.draw_curve_body(
+            &mut polygons,
+            (151.0, 23.0).into(),
+            (146.0, 178.0).into(),
+            (146.0, 178.0).into(),
+            (182.0, 182.0).into(),
+            EndType::new(22.0),
+            EndType::new(15.0),
+            0.0,
+            0.0,
+        );
+
+        polygons.generate_svg(true);
     }
 }
