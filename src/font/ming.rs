@@ -141,15 +141,11 @@ impl Ming {
                 &left_sampled_points,
             );
             let SplitResult {
-                index: _,
+                index: right_sampled_points_actual_divided_index,
                 segments:
                     [
-                        [
-                            right_start_point_1,
-                            right_rough_estimate_control_point_1,
-                            right_end_point_1,
-                        ],
-                        [_, right_rough_estimate_control_point_2, right_end_point_2],
+                        [_, right_rough_estimate_control_point_1, _],
+                        [_, right_rough_estimate_control_point_2, _],
                     ],
             } = split_quadratic_bezier_curve(
                 start_point,
@@ -178,13 +174,13 @@ impl Ming {
                 left_fitted_2.end_point,
             ]);
             let mut polygon_2 = {
-                let point_1 = right_start_point_1;
+                let point_1 = right_sampled_points[0];
                 let point_2 = right_rough_estimate_control_point_1
                     - (left_fitted_1.control_point - left_rough_estimate_control_point_1);
-                let point_3 = right_end_point_1;
+                let point_3 = right_sampled_points[right_sampled_points_actual_divided_index];
                 let point_4 = right_rough_estimate_control_point_2
                     - (left_fitted_2.control_point - left_rough_estimate_control_point_2);
-                let point_5 = right_end_point_2;
+                let point_5 = right_sampled_points[right_sampled_points.len() - 1];
 
                 Polygon::new::<Point>(vec![
                     (point_1.x, point_1.y, false).into(),
@@ -194,7 +190,6 @@ impl Ming {
                     (point_5.x, point_5.y, false).into(),
                 ])
             };
-            println!("polygon_2: {:#?}", polygon_2);
 
             polygon_2.reverse();
             polygon_1.concat(polygon_2);
@@ -359,6 +354,6 @@ mod test {
             0.0,
         );
 
-        polygons.generate_svg(true);
+        println!("{}", polygons.generate_svg(true));
     }
 }

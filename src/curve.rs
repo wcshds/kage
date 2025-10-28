@@ -2,6 +2,7 @@ use crate::utils::{CurveSampler, Point, is_quadratic, normalize, round};
 
 const INITIAL_RATE: f64 = 0.5;
 
+#[derive(Debug)]
 pub(crate) struct SplitResult {
     pub(crate) index: usize,
     pub(crate) segments: [[Point; 3]; 2],
