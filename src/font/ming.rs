@@ -3,6 +3,7 @@ use crate::{
         FattenResult, SplitResult, fit_quadratic_bezier, generate_fatten_curve,
         split_quadratic_bezier_curve,
     },
+    pen::Pen,
     polygon::Polygon,
     polygons::Polygons,
     stroke::{EndKind, EndType},
@@ -303,13 +304,56 @@ impl Ming {
             polygons.push(polygon_1);
         }
     }
+
+    fn draw_curve_head(
+        &self,
+        polygons: &mut Polygons,
+        start_point: Point,
+        control_point_1: Point,
+        head_shape: EndType,
+        min_width_vertical: f64,
+        is_up_to_bottom: bool,
+        corner_offset: f64,
+    ) {
+        match &head_shape.kind {
+            &EndKind::TopLeftCorner => {
+                let mut pen = Pen::new(start_point.x, start_point.y);
+
+                if start_point.x != control_point_1.x {
+                    // ???
+                    pen.set_down(control_point_1.x, control_point_1.y);
+                }
+
+                let polygon = pen.get_polygon(&[
+                    (-min_width_vertical, 0.0).into(),
+                    (min_width_vertical, 0.0).into(),
+                    (-min_width_vertical, -min_width_vertical).into(),
+                ]);
+
+                polygons.push(polygon);
+            }
+            &EndKind::Free => {
+                if is_up_to_bottom {
+                    let mut pen = Pen::new(start_point.x, start_point.y);
+
+                    if start_point.x != control_point_1.x {
+                        // ???
+                        pen.set_down(control_point_1.x, control_point_1.y);
+                    }
+
+                    
+                }
+            }
+            _ => {}
+        }
+    }
 }
 
 #[cfg(test)]
 mod test {
     use crate::{font::ming::Ming, polygons::Polygons, stroke::EndType};
 
-    fn init() -> Ming {
+    fn init(use_curve: bool) -> Ming {
         Ming {
             k_rate: 100,
             k_min_width_horizontal: 2.0,
@@ -319,7 +363,7 @@ mod test {
             k_square_terminal: 3.0,
             k_l2rdfatten: 1.1,
             k_mage: 10.0,
-            k_use_curve: true,
+            k_use_curve: use_curve,
             k_adjust_kakato_l: vec![14.0, 9.0, 5.0, 2.0, 0.0],
             k_adjust_kakato_r: vec![8.0, 6.0, 4.0, 2.0],
             k_adjust_kakato_range_x: 20.0,
@@ -339,7 +383,7 @@ mod test {
 
     #[test]
     fn test_draw_curve_body() {
-        let ming = init();
+        let ming = init(true);
         let mut polygons = Polygons::new();
 
         ming.draw_curve_body(
