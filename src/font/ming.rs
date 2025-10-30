@@ -344,8 +344,8 @@ impl Ming {
                     }
 
                     let mut shape_factor = f64::atan2(
-                        start_point.y - control_point_1.y,
-                        start_point.x - control_point_1.x,
+                        (start_point.y - control_point_1.y).abs(),
+                        (start_point.x - control_point_1.x).abs(),
                     ) / (f64::consts::PI / 2.0)
                         - 0.4;
                     if shape_factor > 0.0 {
@@ -518,9 +518,9 @@ mod test {
 
         ming.draw_curve_head(
             &mut polygons,
-            (53.0, 62.0).into(),
+            (56.0, 62.0).into(),
             (191.0, 62.0).into(),
-            EndType::new(12.0),
+            EndType::new(0.0),
             6.0,
             true,
             0.0,
