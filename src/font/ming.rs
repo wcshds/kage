@@ -1,3 +1,5 @@
+use core::f64;
+
 use crate::{
     curve::{
         FattenResult, SplitResult, fit_quadratic_bezier, generate_fatten_curve,
@@ -341,8 +343,116 @@ impl Ming {
                         pen.set_down(control_point_1.x, control_point_1.y);
                     }
 
-                    
+                    let mut shape_factor = f64::atan2(
+                        start_point.y - control_point_1.y,
+                        start_point.x - control_point_1.x,
+                    ) / (f64::consts::PI / 2.0)
+                        - 0.4;
+                    if shape_factor > 0.0 {
+                        shape_factor *= 2.0;
+                    } else {
+                        shape_factor *= 16.0;
+                    }
+
+                    let plus_minus = shape_factor.signum();
+
+                    let polygon_1 = pen.get_polygon(&[
+                        (-min_width_vertical, 1.0).into(),
+                        (min_width_vertical, 0.0).into(),
+                        (
+                            -plus_minus * min_width_vertical,
+                            -self.k_min_width_horizontal * shape_factor.abs(),
+                        )
+                            .into(),
+                    ]);
+                    polygons.push(polygon_1);
+
+                    let move_offset = if shape_factor < 0.0 {
+                        -shape_factor * self.k_min_width_horizontal
+                    } else {
+                        0.0
+                    };
+                    let polygon_2 = pen.get_polygon(&if start_point.x == control_point_1.x
+                        && start_point.y == control_point_1.y
+                    {
+                        [
+                            (min_width_vertical, -move_offset).into(),
+                            (
+                                min_width_vertical * 1.5,
+                                self.k_min_width_horizontal - move_offset,
+                            )
+                                .into(),
+                            (
+                                min_width_vertical - 2.0,
+                                self.k_min_width_horizontal * 2.0 + 1.0,
+                            )
+                                .into(),
+                        ]
+                    } else {
+                        [
+                            (min_width_vertical, -move_offset).into(),
+                            (
+                                min_width_vertical * 1.5,
+                                self.k_min_width_horizontal - move_offset * 1.2,
+                            )
+                                .into(),
+                            (
+                                min_width_vertical - 2.0,
+                                self.k_min_width_horizontal * 2.0 - move_offset * 0.8 + 1.0,
+                            )
+                                .into(),
+                        ]
+                    });
+                    polygons.push(polygon_2);
+                } else {
+                    let mut pen = Pen::new(start_point.x, start_point.y);
+
+                    if start_point.x == control_point_1.x {
+                        pen.set_matrix2(0.0, 1.0);
+                    } else {
+                        pen.set_right(control_point_1.x, control_point_1.y);
+                    }
+
+                    let polygon_1 = pen.get_polygon(&[
+                        (0.0, min_width_vertical).into(),
+                        (0.0, -min_width_vertical).into(),
+                        (-self.k_min_width_horizontal, -min_width_vertical).into(),
+                    ]);
+                    polygons.push(polygon_1);
+
+                    let polygon_2 = pen.get_polygon(&[
+                        (0.0, min_width_vertical).into(),
+                        (self.k_min_width_horizontal, min_width_vertical * 1.5).into(),
+                        (self.k_min_width_horizontal * 3.0, min_width_vertical * 0.5).into(),
+                    ]);
+                    polygons.push(polygon_2);
                 }
+            }
+            &EndKind::TopRightCorner | &EndKind::RoofedNarrowEntry => {
+                let pen = Pen::new(start_point.x - corner_offset, start_point.y);
+                let mut polygon_1 = pen.get_polygon(&[
+                    (-min_width_vertical, -self.k_min_width_horizontal).into(),
+                    (0.0, -self.k_min_width_horizontal - self.k_width).into(),
+                    (
+                        min_width_vertical + self.k_width,
+                        self.k_min_width_horizontal,
+                    )
+                        .into(),
+                    (min_width_vertical, self.k_min_width_vertical - 1.0).into(),
+                ]);
+                let polygon_2 = if matches!(&head_shape.kind, &EndKind::RoofedNarrowEntry) {
+                    Polygon::new::<Point>(vec![
+                        (0.0, self.k_min_width_vertical + 2.0).into(),
+                        (0.0, 0.0).into(),
+                    ])
+                } else {
+                    Polygon::new::<Point>(vec![
+                        (-self.k_min_width_vertical, self.k_min_width_vertical + 4.0).into(),
+                    ])
+                };
+
+                polygon_1.concat(polygon_2);
+                polygons.push(polygon_1);
             }
             _ => {}
         }
@@ -399,5 +509,23 @@ mod test {
         );
 
         println!("{}", polygons.generate_svg(true));
+    }
+
+    #[test]
+    fn test_draw_curve_head() {
+        let ming = init(false);
+        let mut polygons = Polygons::new();
+
+        ming.draw_curve_head(
+            &mut polygons,
+            (53.0, 62.0).into(),
+            (191.0, 62.0).into(),
+            EndType::new(12.0),
+            6.0,
+            true,
+            0.0,
+        );
+
+        println!("{:#?}", polygons);
     }
 }
