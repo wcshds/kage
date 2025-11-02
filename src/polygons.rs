@@ -4,7 +4,7 @@ use crate::polygon::Polygon;
 
 #[derive(Debug)]
 pub struct Polygons {
-    array: Vec<Polygon>,
+    pub(crate) array: Vec<Polygon>,
 }
 
 impl Polygons {

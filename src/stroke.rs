@@ -93,7 +93,7 @@ impl StrokeType {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub(crate) enum EndKind {
     /// 開放
     Free = 0,
@@ -126,13 +126,17 @@ pub(crate) enum EndKind {
     /// 收筆
     Stop = 8,
 
-    Unknown,
-
     Temp14 = 14,
     Temp15 = 15,
+    Temp1 = 1,
+    Temp9 = 9,
+    Temp6 = 6,
+    Temp17 = 17,
+
+    Unknown = 1000,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub(crate) struct EndType {
     pub(crate) base: u32,
     pub(crate) opt: u32,
@@ -158,16 +162,29 @@ impl EndType {
             7 => EndKind::Narrow,
             8 => EndKind::Stop,
             12 => EndKind::TopLeftCorner,
-            13 => EndKind::BottomLeftCorner,
+            13 => {
+                if num_opt_1 == 4 {
+                    // 413
+                    EndKind::BottomLeftZhNew
+                } else if num_opt_1 == 3 {
+                    // 313
+                    EndKind::BottomLeftZhOld
+                } else {
+                    // 13
+                    EndKind::BottomLeftCorner
+                }
+            }
             22 => EndKind::TopRightCorner,
             23 => EndKind::BottomRightCorner,
             24 => EndKind::BottomRightHorT,
             27 => EndKind::RoofedNarrowEntry,
             32 => EndKind::VerticalConnection,
-            313 => EndKind::BottomLeftZhOld,
-            413 => EndKind::BottomLeftZhNew,
             14 => EndKind::Temp14,
             15 => EndKind::Temp15,
+            1 => EndKind::Temp1,
+            9 => EndKind::Temp9,
+            6 => EndKind::Temp6,
+            17 => EndKind::Temp17,
             _ => EndKind::Unknown,
         };
 

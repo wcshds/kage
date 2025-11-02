@@ -71,10 +71,14 @@ impl Pen {
         self
     }
 
-    pub fn get_polygon(&self, local_points: &[Point]) -> Polygon {
+    pub fn get_polygon<P>(&self, local_points: &[P]) -> Polygon
+    where
+        P: Into<Point> + Copy,
+    {
         let local_points = local_points
             .iter()
             .map(|local_point| {
+                let local_point: Point = (*local_point).into();
                 self.get_point(
                     local_point.x,
                     local_point.y,
