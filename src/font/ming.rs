@@ -1350,43 +1350,7 @@ impl Ming {
                     if start_point.x > end_point.x {
                         pen.set_matrix2(-1.0, 0.0);
                     }
-                    // const r = 0.6;
-                    // const poly = pen2.getPolygon(
-                    //     (font.kUseCurve)
-                    //         ? [
-                    //             { x: 0, y: -kMinWidthT },
-                    //             { x: +kMinWidthT * 0.9, y: -kMinWidthT * 0.9, off: true },
-                    //             { x: +kMinWidthT, y: 0 },
-                    //             { x: +kMinWidthT * 0.9, y: +kMinWidthT * 0.9, off: true },
-                    //             { x: 0, y: +kMinWidthT },
-                    //         ]
-                    //         : [
-                    //             { x: 0, y: -kMinWidthT },
-                    //             { x: +kMinWidthT * r, y: -kMinWidthT * 0.6 },
-                    //             { x: +kMinWidthT, y: 0 },
-                    //             { x: +kMinWidthT * r, y: +kMinWidthT * 0.6 },
-                    //             { x: 0, y: +kMinWidthT },
-                    //         ]);
-                    // if (x1 >= x2) {
-                    //     poly.reverse();
-                    // }
-                    // polygons.push(poly);
 
-                    // if (a2 === 5) {
-                    //     const haneLength = font.kWidth * (4 * (1 - opt1 / font.kAdjustMageStep) + 1);
-                    //     // KAGI NO YOKO BOU NO HANE
-                    //     const rv = x1 < x2 ? 1 : -1;
-                    //     const poly = pen2.getPolygon([
-                    //         // { x: 0, y: rv * (-kMinWidthT + 1) },
-                    //         { x: 0, y: rv * -kMinWidthT },
-                    //         { x: 2, y: rv * (-kMinWidthT - haneLength) },
-                    //         { x: 0, y: rv * (-kMinWidthT - haneLength) },
-                    //         // { x: -kMinWidthT, y: rv * (-kMinWidthT + 1) },
-                    //         { x: -kMinWidthT, y: rv * -kMinWidthT },
-                    //     ]);
-                    //     // poly2.reverse(); // for fill-rule
-                    //     polygons.push(poly);
-                    // }
                     let r = 0.6;
                     let local_points = if self.k_use_curve {
                         vec![
