@@ -1170,8 +1170,316 @@ impl Ming {
                 }
                 _ => {}
             }
-        
-            
+
+            match &head_shape.kind {
+                &EndKind::TopRightCorner => {
+                    // keep the angle of the wedge unchanged even if the stroke is oblique
+                    let pen = Pen::new(start_point.x, start_point.y);
+                    let mut polygon_1 = pen.get_polygon(&[
+                        (-min_width_vertical, -self.k_min_width_horizontal, false),
+                        (0.0, -self.k_min_width_horizontal - self.k_width, false),
+                        (
+                            min_width_vertical + self.k_width,
+                            self.k_min_width_horizontal,
+                            false,
+                        ),
+                    ]);
+                    let polygon_2 = if start_point.x == end_point.x {
+                        Polygon::new(vec![
+                            (min_width_vertical, min_width_vertical, false),
+                            (-min_width_vertical, 0.0, false),
+                        ])
+                    } else {
+                        Polygon::new(vec![
+                            (min_width_vertical, min_width_vertical - 1.0, false),
+                            (-min_width_vertical, min_width_vertical + 4.0, false),
+                        ])
+                    };
+                    polygon_1.concat(polygon_2);
+                    polygons.push(polygon_1);
+                }
+                &EndKind::RoofedNarrowEntry => {
+                    // keep the angle of the wedge unchanged even if the stroke is oblique
+                    let pen = Pen::new(start_point.x, start_point.y);
+                    let mut polygon_1 = pen.get_polygon(&[
+                        (-min_width_vertical, -self.k_min_width_horizontal, false),
+                        (0.0, -self.k_min_width_horizontal - self.k_width, false),
+                        (
+                            min_width_vertical + self.k_width,
+                            self.k_min_width_horizontal,
+                            false,
+                        ),
+                    ]);
+                    let polygon_2 = if start_point.x == end_point.x {
+                        Polygon::new(vec![
+                            (min_width_vertical, min_width_vertical, false),
+                            (-min_width_vertical, 0.0, false),
+                        ])
+                    } else {
+                        Polygon::new(vec![
+                            (min_width_vertical, min_width_vertical - 1.0, false),
+                            (0.0, min_width_vertical + 2.0, false),
+                            (0.0, 0.0, false),
+                        ])
+                    };
+                    polygon_1.concat(polygon_2);
+                    polygons.push(polygon_1);
+                }
+                &EndKind::Free => {
+                    let polygon = pen_1.get_polygon(&[
+                        (min_width_vertical, self.k_min_width_horizontal * 0.5, false),
+                        (
+                            min_width_vertical * 1.5,
+                            self.k_min_width_horizontal * 1.5,
+                            false,
+                        ),
+                        if start_point.x != end_point.x {
+                            (
+                                start_point.x
+                                    + (self.k_min_width_vertical - 2.0) * sin_radian
+                                    + (self.k_min_width_horizontal * 2.5) * cos_radian,
+                                start_point.y
+                                    + (self.k_min_width_vertical + 1.0) * (-cos_radian)
+                                    + (self.k_min_width_horizontal * 2.5) * sin_radian,
+                                false,
+                            )
+                        } else {
+                            (
+                                min_width_vertical - 2.0,
+                                self.k_min_width_horizontal * 2.5 + 1.0,
+                                false,
+                            )
+                        },
+                    ]);
+                    polygons.push(polygon);
+                }
+                _ => {}
+            }
+
+            if (start_point.x == end_point.x && matches!(&tail_shape.kind, &EndKind::Temp1))
+                || (matches!(&head_shape.kind, &EndKind::Temp6)
+                    && (matches!(&tail_shape.kind, &EndKind::Free)
+                        || (start_point.x != end_point.x
+                            && matches!(&tail_shape.kind, &EndKind::RightUpwardFlick))))
+            {
+                let mut polygon = Polygon::new_empty();
+                if self.k_use_curve {
+                    polygon.push_point(pen_2.get_point(min_width_vertical, 0.0, false));
+                    polygon.push(
+                        end_point.x - cos_radian * min_width_vertical * 0.9
+                            + (-sin_radian) * (-min_width_vertical) * 0.9,
+                        end_point.y
+                            + sin_radian * min_width_vertical * 0.9
+                            + cos_radian * (-min_width_vertical) * 0.9,
+                        Some(true),
+                    );
+                    polygon.push_point(pen_2.get_point(0.0, min_width_vertical, false));
+                    polygon.push_point(pen_2.get_point(
+                        (-min_width_vertical) * 0.9,
+                        min_width_vertical * 0.9,
+                        true,
+                    ));
+                    polygon.push_point(pen_2.get_point(-min_width_vertical, 0.0, false));
+                } else {
+                    let r = if start_point.x == end_point.x
+                        && ((matches!(&head_shape.kind, &EndKind::Temp6)
+                            && matches!(&tail_shape.kind, &EndKind::Free))
+                            || matches!(&tail_shape.kind, &EndKind::Temp1))
+                    {
+                        0.6
+                    } else {
+                        0.8
+                    };
+
+                    polygon.push_point(pen_2.get_point(min_width_vertical, 0.0, false));
+                    polygon.push_point(pen_2.get_point(
+                        min_width_vertical * 0.6,
+                        min_width_vertical * r,
+                        false,
+                    ));
+                    polygon.push_point(pen_2.get_point(0.0, min_width_vertical, false));
+                    polygon.push_point(pen_2.get_point(
+                        (-min_width_vertical) * 0.6,
+                        min_width_vertical * r,
+                        false,
+                    ));
+                    polygon.push_point(pen_2.get_point(-min_width_vertical, 0.0, false));
+
+                    if start_point.x == end_point.x
+                        && ((matches!(&head_shape.kind, &EndKind::Temp6)
+                            && matches!(&tail_shape.kind, &EndKind::Free))
+                            || matches!(&tail_shape.kind, &EndKind::Temp1))
+                    {
+                        polygon.reverse();
+                    }
+                    polygons.push(polygon);
+                    if start_point.x != end_point.x
+                        && matches!(&head_shape.kind, &EndKind::Temp6)
+                        && matches!(&tail_shape.kind, &EndKind::RightUpwardFlick)
+                    {
+                        let hane_length = self.k_width * 5.0;
+                        let rv = if start_point.x < end_point.x {
+                            1.0
+                        } else {
+                            -1.0
+                        };
+                        let polygon = pen_2.get_polygon(&[
+                            (rv * (min_width_vertical - 1.0), 0.0, false),
+                            (rv * (min_width_vertical + hane_length), 2.0, false),
+                            (rv * (min_width_vertical + hane_length), 0.0, false),
+                            (min_width_vertical - 1.0, -min_width_vertical, false),
+                        ]);
+                        polygons.push(polygon);
+                    }
+                }
+            }
+        } else if start_point.y == end_point.y && matches!(&head_shape.kind, &EndKind::Temp6) {
+            let pen_1 = Pen::new(start_point.x, start_point.y);
+            let pen_2 = Pen::new(end_point.x, end_point.y);
+            let polygon = Polygon::new(vec![
+                pen_1.get_point(0.0, -min_width_vertical, false),
+                pen_2.get_point(0.0, -min_width_vertical, false),
+                pen_2.get_point(0.0, min_width_vertical, false),
+                pen_1.get_point(0.0, min_width_vertical, false),
+            ]);
+            polygons.push(polygon);
+
+            match &tail_shape.kind {
+                &EndKind::Temp1 | &EndKind::Free | &EndKind::RightUpwardFlick => {
+                    let mut pen = Pen::new(end_point.x, end_point.y);
+                    if start_point.x > end_point.x {
+                        pen.set_matrix2(-1.0, 0.0);
+                    }
+                    // const r = 0.6;
+                    // const poly = pen2.getPolygon(
+                    //     (font.kUseCurve)
+                    //         ? [
+                    //             { x: 0, y: -kMinWidthT },
+                    //             { x: +kMinWidthT * 0.9, y: -kMinWidthT * 0.9, off: true },
+                    //             { x: +kMinWidthT, y: 0 },
+                    //             { x: +kMinWidthT * 0.9, y: +kMinWidthT * 0.9, off: true },
+                    //             { x: 0, y: +kMinWidthT },
+                    //         ]
+                    //         : [
+                    //             { x: 0, y: -kMinWidthT },
+                    //             { x: +kMinWidthT * r, y: -kMinWidthT * 0.6 },
+                    //             { x: +kMinWidthT, y: 0 },
+                    //             { x: +kMinWidthT * r, y: +kMinWidthT * 0.6 },
+                    //             { x: 0, y: +kMinWidthT },
+                    //         ]);
+                    // if (x1 >= x2) {
+                    //     poly.reverse();
+                    // }
+                    // polygons.push(poly);
+
+                    // if (a2 === 5) {
+                    //     const haneLength = font.kWidth * (4 * (1 - opt1 / font.kAdjustMageStep) + 1);
+                    //     // KAGI NO YOKO BOU NO HANE
+                    //     const rv = x1 < x2 ? 1 : -1;
+                    //     const poly = pen2.getPolygon([
+                    //         // { x: 0, y: rv * (-kMinWidthT + 1) },
+                    //         { x: 0, y: rv * -kMinWidthT },
+                    //         { x: 2, y: rv * (-kMinWidthT - haneLength) },
+                    //         { x: 0, y: rv * (-kMinWidthT - haneLength) },
+                    //         // { x: -kMinWidthT, y: rv * (-kMinWidthT + 1) },
+                    //         { x: -kMinWidthT, y: rv * -kMinWidthT },
+                    //     ]);
+                    //     // poly2.reverse(); // for fill-rule
+                    //     polygons.push(poly);
+                    // }
+                    let r = 0.6;
+                    let local_points = if self.k_use_curve {
+                        vec![
+                            (0.0, -min_width_vertical, false),
+                            (min_width_vertical * 0.9, -min_width_vertical * 0.9, true),
+                            (min_width_vertical, 0.0, false),
+                            (min_width_vertical * 0.9, min_width_vertical * 0.9, true),
+                            (0.0, min_width_vertical, false),
+                        ]
+                    } else {
+                        vec![
+                            (0.0, -min_width_vertical, false),
+                            (min_width_vertical * r, -min_width_vertical * 0.6, false),
+                            (min_width_vertical, 0.0, false),
+                            (min_width_vertical * r, min_width_vertical * 0.6, false),
+                            (0.0, min_width_vertical, false),
+                        ]
+                    };
+                    let mut polygon = pen.get_polygon(&local_points);
+                    if start_point.x > end_point.x {
+                        polygon.reverse();
+                    }
+                    polygons.push(polygon);
+
+                    if matches!(&tail_shape.kind, &EndKind::RightUpwardFlick) {
+                        let hane_length = self.k_width
+                            * (4.0
+                                * (1.0 - vertical_thickness_adjustment / self.k_adjust_mage_step)
+                                + 1.0);
+                        let rv = if start_point.x < end_point.x {
+                            1.0
+                        } else {
+                            -1.0
+                        };
+                        let polygon = pen.get_polygon(&[
+                            (0.0, rv * (-min_width_vertical), false),
+                            (2.0, rv * (-min_width_vertical - hane_length), false),
+                            (0.0, rv * (-min_width_vertical - hane_length), false),
+                            (-min_width_vertical, rv * (-min_width_vertical), false),
+                        ]);
+                        polygons.push(polygon);
+                    }
+                }
+                _ => {}
+            }
+        } else {
+            let (cos_radian, sin_radian) = if start_point.y == end_point.y {
+                (1.0, 0.0)
+            } else {
+                let vector = normalize(end_point - start_point, 1.0);
+                (vector.x, vector.y)
+            };
+
+            let mut pen_1 = Pen::new(start_point.x, start_point.y);
+            let mut pen_2 = Pen::new(end_point.x, end_point.y);
+            pen_1.set_matrix2(cos_radian, sin_radian);
+            pen_2.set_matrix2(cos_radian, sin_radian);
+
+            let mut polygon = Polygon::new(vec![
+                pen_1.get_point(0.0, -self.k_min_width_horizontal, false),
+                pen_2.get_point(0.0, -self.k_min_width_horizontal, false),
+                pen_2.get_point(0.0, self.k_min_width_horizontal, false),
+                pen_1.get_point(0.0, self.k_min_width_horizontal, false),
+            ]);
+            polygons.push(polygon);
+
+            match &tail_shape.kind {
+                // triangle terminal
+                &EndKind::Free => {
+                    let square_terminal_scale =
+                        (self.k_min_width_triangle / self.k_min_width_horizontal - 1.0) / 4.0 + 1.0;
+                    let mut polygon_2 = pen_2.get_polygon(&[
+                        (0.0, -self.k_min_width_horizontal, false),
+                        (
+                            -self.k_adjust_uroko_x[square_adjustment] * square_terminal_scale,
+                            0.0,
+                            false,
+                        ),
+                    ]);
+                    polygon_2.push(
+                        end_point.x
+                            - (cos_radian - sin_radian) * self.k_adjust_uroko_x[square_adjustment]
+                                / 2.0,
+                        end_point.y
+                            - (sin_radian + cos_radian)
+                                * self.k_adjust_uroko_y[square_adjustment]
+                                * square_terminal_scale,
+                        Some(false),
+                    );
+                    polygons.push(polygon_2);
+                }
+                _ => {}
+            }
         }
     }
 }
