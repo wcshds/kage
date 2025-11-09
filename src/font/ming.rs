@@ -835,7 +835,7 @@ impl Ming {
         head_shape: EndType,
         tail_shape: EndType,
         vertical_thickness_adjustment: f64,
-        triangle_adjustment: f64,
+        triangle_adjustment: usize,
         square_adjustment: usize,
     ) {
         let min_width_vertical = self.k_min_width_vertical - vertical_thickness_adjustment / 2.0;
@@ -1017,7 +1017,14 @@ impl Ming {
                             )
                             .expect("The length of polygon is equal to 4.");
                         polygon
-                            .set_point(2, pen_2.get_point(-min_width_vertical, 0.0, false))
+                            .set_point(
+                                2,
+                                pen_2.get_point(
+                                    -min_width_vertical,
+                                    min_width_vertical / 2.0,
+                                    false,
+                                ),
+                            )
                             .expect("The length of polygon is equal to 4.");
                     }
                 }
@@ -1425,18 +1432,19 @@ impl Ming {
                     let mut polygon_2 = pen_2.get_polygon(&[
                         (0.0, -self.k_min_width_horizontal, false),
                         (
-                            -self.k_adjust_uroko_x[square_adjustment] * square_terminal_scale,
+                            -self.k_adjust_uroko_x[triangle_adjustment] * square_terminal_scale,
                             0.0,
                             false,
                         ),
                     ]);
                     polygon_2.push(
                         end_point.x
-                            - (cos_radian - sin_radian) * self.k_adjust_uroko_x[square_adjustment]
+                            - (cos_radian - sin_radian)
+                                * self.k_adjust_uroko_x[triangle_adjustment]
                                 / 2.0,
                         end_point.y
                             - (sin_radian + cos_radian)
-                                * self.k_adjust_uroko_y[square_adjustment]
+                                * self.k_adjust_uroko_y[triangle_adjustment]
                                 * square_terminal_scale,
                         Some(false),
                     );
@@ -1558,6 +1566,66 @@ mod test {
             0.0,
         );
 
+        println!(
+            "{}",
+            polygons
+                .array
+                .iter()
+                .map(|each| {
+                    let mut tmp = String::new();
+                    for point in each.points() {
+                        tmp.push_str(&format!("{},{} ", point.x, point.y));
+                    }
+                    tmp
+                })
+                .collect::<Vec<String>>()
+                .join("\n")
+        );
+    }
+
+    fn init_2() -> Ming {
+        Ming {
+            k_rate: 100,
+            k_min_width_horizontal: 16.0,
+            k_min_width_triangle: 18.0,
+            k_min_width_vertical: 20.0,
+            k_width: 4.0,
+            k_square_terminal: 3.0,
+            k_l2rdfatten: 1.1,
+            k_mage: 10.0,
+            k_use_curve: false,
+            k_adjust_kakato_l: vec![0.0, 2.0, 4.0, 6.0, 8.0],
+            k_adjust_kakato_r: vec![0.0, 3.0, 6.0, 9.0, 12.0],
+            k_adjust_kakato_range_x: 20.0,
+            k_adjust_kakato_range_y: vec![1.0, 19.0, 24.0, 30.0],
+            k_adjust_kakato_step: 3.0,
+            k_adjust_uroko_x: vec![0.0, 6.0, 12.0, 18.0],
+            k_adjust_uroko_y: vec![0.0, 5.0, 10.0, 15.0],
+            k_adjust_uroko_length: vec![22.0, 36.0, 50.0],
+            k_adjust_uroko_length_step: 3.0,
+            k_adjust_uroko_line: vec![22.0, 26.0, 30.0],
+            k_adjust_uroko2_step: 3.0,
+            k_adjust_uroko2_length: 40.0,
+            k_adjust_tate_step: 4.0,
+            k_adjust_mage_step: 8.0,
+        }
+    }
+
+    #[test]
+    fn test_cd_draw_line() {
+        let ming = init_2();
+        let mut polygons = Polygons::new();
+
+        ming.cd_draw_line(
+            &mut polygons,
+            (100.0, 100.0).into(),
+            (100.0, 180.0).into(),
+            EndType::new(0.0),
+            EndType::new(0.0),
+            0.0,
+            0,
+            0,
+        );
         println!(
             "{}",
             polygons
