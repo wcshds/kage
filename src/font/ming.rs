@@ -5,77 +5,80 @@ use crate::{
         FattenResult, SplitResult, fit_quadratic_bezier, generate_fatten_curve,
         split_quadratic_bezier_curve,
     },
+    font::stroke_adjustment::AdjustedStroke,
+    line::{
+        Line,
+        special_line::{SpecialLineType, TransformType},
+        stroke_line::{EndKind, EndType, StrokeKind},
+    },
     pen::Pen,
     polygon::Polygon,
     polygons::Polygons,
-    stroke::{EndKind, EndType},
     utils::{Point, Vector, is_quadratic, normalize},
 };
 
-const DIVIDE_INITIAL_RATE: f64 = 0.5;
-
-struct Ming {
+pub struct Ming {
     /// must divide 1000
-    k_rate: usize,
+    pub k_rate: usize,
     /// Half of the width of mincho-style horizontal (thinner) strokes.
     /// origin name: kMinWidthY
-    k_min_width_horizontal: f64,
+    pub k_min_width_horizontal: f64,
     /// Determines the size of ウロコ at the 開放 end of mincho-style horizontal strokes.
     /// origin name: kMinWidthU
-    k_min_width_triangle: f64,
+    pub k_min_width_triangle: f64,
     /// Half of the width of mincho-style vertical (thicker) strokes.
     /// origin name: kMinWidthT
-    k_min_width_vertical: f64,
+    pub k_min_width_vertical: f64,
     /// Half of the width of gothic-style strokes.
     /// Also used to determine the size of mincho's ornamental elements.
-    k_width: f64,
+    pub k_width: f64,
     /// Size of kakato in gothic.
-    k_square_terminal: f64,
+    pub k_square_terminal: f64,
     /// Width at the end of 右払い relative to `2 * kMinWidthT`.
-    k_l2rdfatten: f64,
+    pub k_l2rdfatten: f64,
     /// Size of the curve at the end of 左ハネ, and at the middle of 折れ and 乙線 strokes.
-    k_mage: f64,
+    pub k_mage: f64,
     /// Whether to use off-curve points to approximate curving strokes
     /// with quadratic Bézier curves (experimental).
-    k_use_curve: bool,
+    pub k_use_curve: bool,
     /// Length of 左下カド's カカト in mincho for each shortening level (0 to 3) and 413 (左下zh用新).
     /// for KAKATO adjustment 000,100,200,300,400
-    k_adjust_kakato_l: Vec<f64>,
+    pub k_adjust_kakato_l: Vec<f64>,
     /// Length of 右下カド's カカト in mincho for each shortening level (0 to 3).
     /// for KAKATO adjustment 000,100,200,300
-    k_adjust_kakato_r: Vec<f64>,
+    pub k_adjust_kakato_r: Vec<f64>,
     /// Width of the collision box below カカト for shortening adjustment.
     /// check area width
-    k_adjust_kakato_range_x: f64,
+    pub k_adjust_kakato_range_x: f64,
     /// Height of the collision box below カカト for each shortening adjustment level (0 to 3).
     /// 3 steps of checking
-    k_adjust_kakato_range_y: Vec<f64>,
+    pub k_adjust_kakato_range_y: Vec<f64>,
     /// f64 of カカト shortening levels. Must be set to 3.
     /// f64 of steps
-    k_adjust_kakato_step: f64,
+    pub k_adjust_kakato_step: f64,
     /// Size of ウロコ at the 開放 end of mincho-style horizontal strokes for each shrinking level (0 to max({@link kAdjustUrokoLengthStep}, {@link kAdjustUroko2Step})).
     /// for UROKO adjustment 000,100,200,300
-    k_adjust_uroko_x: Vec<f64>,
+    pub k_adjust_uroko_x: Vec<f64>,
     /// Size of ウロコ at the 開放 end of mincho-style horizontal strokes for each shrinking level (0 to max({@link kAdjustUrokoLengthStep}, {@link kAdjustUroko2Step})).
     /// for UROKO adjustment 000,100,200,300
-    k_adjust_uroko_y: Vec<f64>,
+    pub k_adjust_uroko_y: Vec<f64>,
     /// Threshold length of horizontal strokes for shrinking its ウロコ for each adjustment level ({@link kAdjustUrokoLengthStep} to 1).
     /// length for checking
-    k_adjust_uroko_length: Vec<f64>,
+    pub k_adjust_uroko_length: Vec<f64>,
     /// f64 of ウロコ shrinking levels by adjustment using collision detection.
     /// f64 of steps
-    k_adjust_uroko_length_step: f64,
+    pub k_adjust_uroko_length_step: f64,
     /// Size of the collision box to the left of ウロコ at the 開放 end of mincho-style horizontal strokes for each shrinking adjustment level ({@link kAdjustUrokoLengthStep} to 1).
     /// check for crossing. corresponds to length
-    k_adjust_uroko_line: Vec<f64>,
+    pub k_adjust_uroko_line: Vec<f64>,
     /// f64 of ウロコ shrinking levels by adjustment based on the density of horizontal strokes.
-    k_adjust_uroko2_step: f64,
+    pub k_adjust_uroko2_step: f64,
     /// Parameter for shrinking adjustment of ウロコ based on the density of horizontal strokes.
-    k_adjust_uroko2_length: f64,
+    pub k_adjust_uroko2_length: f64,
     /// Parameter for thinning adjustment of mincho-style vertical strokes.
-    k_adjust_tate_step: f64,
+    pub k_adjust_tate_step: f64,
     /// Parameter for thinning adjustment of the latter half of mincho-style 折れ strokes.
-    k_adjust_mage_step: f64,
+    pub k_adjust_mage_step: f64,
 }
 
 impl Ming {
@@ -779,7 +782,7 @@ impl Ming {
         head_shape: EndType,
         tail_shape: EndType,
         vertical_thickness_adjustment: f64,
-        hane_adjustment: f64,
+        flick_adjustment: f64,
         start_thickness_adjustment: f64,
         end_thickness_adjustment: f64,
     ) {
@@ -792,7 +795,7 @@ impl Ming {
             head_shape,
             tail_shape,
             vertical_thickness_adjustment,
-            hane_adjustment,
+            flick_adjustment,
             start_thickness_adjustment,
             end_thickness_adjustment,
         )
@@ -834,11 +837,12 @@ impl Ming {
         end_point: Point,
         head_shape: EndType,
         tail_shape: EndType,
-        vertical_thickness_adjustment: f64,
+        vertical_adjustment: f64,
         triangle_adjustment: usize,
-        square_adjustment: usize,
+        foot_adjustment: usize,
     ) {
-        let min_width_vertical = self.k_min_width_vertical - vertical_thickness_adjustment / 2.0;
+        // TODO: adjust kakato_adjustment if a1 = 1 and a3 in [13, 23]; otherwise equals to a3_opt
+        let min_width_vertical = self.k_min_width_vertical - vertical_adjustment / 2.0;
 
         if start_point.x == end_point.x
             || start_point.y != end_point.y
@@ -1037,13 +1041,15 @@ impl Ming {
                         .set_point(2, pen_2.get_point(-min_width_vertical, 0.0, false))
                         .expect("The length of polygon is equal to 4.");
                 }
-                &EndKind::BottomLeftCorner => {
+                &EndKind::BottomLeftCorner
+                | &EndKind::BottomLeftZhNew
+                | &EndKind::BottomLeftZhOld => {
                     polygon
                         .set_point(
                             1,
                             pen_2.get_point(
                                 min_width_vertical,
-                                self.k_adjust_kakato_l[square_adjustment],
+                                self.k_adjust_kakato_l[foot_adjustment],
                                 false,
                             ),
                         )
@@ -1053,7 +1059,7 @@ impl Ming {
                             2,
                             pen_2.get_point(
                                 -min_width_vertical,
-                                self.k_adjust_kakato_l[square_adjustment] + min_width_vertical,
+                                self.k_adjust_kakato_l[foot_adjustment] + min_width_vertical,
                                 false,
                             ),
                         )
@@ -1065,7 +1071,7 @@ impl Ming {
                             1,
                             pen_2.get_point(
                                 min_width_vertical,
-                                self.k_adjust_kakato_r[square_adjustment],
+                                self.k_adjust_kakato_r[foot_adjustment],
                                 false,
                             ),
                         )
@@ -1075,7 +1081,7 @@ impl Ming {
                             2,
                             pen_2.get_point(
                                 -min_width_vertical,
-                                self.k_adjust_kakato_r[square_adjustment] + min_width_vertical,
+                                self.k_adjust_kakato_r[foot_adjustment] + min_width_vertical,
                                 false,
                             ),
                         )
@@ -1142,38 +1148,49 @@ impl Ming {
                             )
                         },
                         (
-                            self.k_min_width_vertical * 2.0,
+                            min_width_vertical * 2.0,
                             -self.k_min_width_horizontal,
                             false,
                         ),
-                        (
-                            self.k_min_width_vertical * 2.0,
-                            self.k_min_width_horizontal,
-                            false,
-                        ),
+                        (min_width_vertical * 2.0, self.k_min_width_horizontal, false),
                     ]);
                     polygons.push(polygon);
                 }
                 &EndKind::BottomLeftZhNew => {
-                    let offset = if start_point.x > end_point.x && start_point.y != end_point.y {
-                        ((start_point.x - end_point.x) / (end_point.y - start_point.y) * 3.0)
-                            .floor()
+                    if start_point.x == end_point.x {
+                        let pen = Pen::new(end_point.x, end_point.y);
+                        let polygon = pen.get_polygon(&[
+                            (-min_width_vertical, -self.k_min_width_horizontal * 3.0),
+                            (-min_width_vertical * 2.0, 0.0),
+                            (
+                                -self.k_min_width_horizontal,
+                                self.k_min_width_horizontal * 5.0,
+                            ),
+                            (min_width_vertical, self.k_min_width_horizontal),
+                        ]);
+                        polygons.push(polygon);
                     } else {
-                        0.0
-                    };
+                        let offset = if start_point.x > end_point.x && start_point.y != end_point.y
+                        {
+                            ((start_point.x - end_point.x) / (end_point.y - start_point.y) * 3.0)
+                                .floor()
+                        } else {
+                            0.0
+                        };
 
-                    let pen = Pen::new(end_point.x + offset, end_point.y);
-                    let polygon = pen.get_polygon(&[
-                        (0.0, -self.k_min_width_horizontal * 5.0),
-                        (-min_width_vertical * 2.0, 0.0),
-                        (
-                            -self.k_min_width_horizontal,
-                            self.k_min_width_horizontal * 5.0,
-                        ),
-                        (min_width_vertical, self.k_min_width_horizontal),
-                        (0.0, 0.0),
-                    ]);
-                    polygons.push(polygon);
+                        let pen = Pen::new(end_point.x + offset, end_point.y);
+                        let polygon = pen.get_polygon(&[
+                            (0.0, -self.k_min_width_horizontal * 5.0),
+                            (-min_width_vertical * 2.0, 0.0),
+                            (
+                                -self.k_min_width_horizontal,
+                                self.k_min_width_horizontal * 5.0,
+                            ),
+                            (min_width_vertical, self.k_min_width_horizontal),
+                            (0.0, 0.0),
+                        ]);
+                        polygons.push(polygon);
+                    }
                 }
                 _ => {}
             }
@@ -1384,9 +1401,7 @@ impl Ming {
 
                     if matches!(&tail_shape.kind, &EndKind::RightUpwardFlick) {
                         let hane_length = self.k_width
-                            * (4.0
-                                * (1.0 - vertical_thickness_adjustment / self.k_adjust_mage_step)
-                                + 1.0);
+                            * (4.0 * (1.0 - vertical_adjustment / self.k_adjust_mage_step) + 1.0);
                         let rv = if start_point.x < end_point.x {
                             1.0
                         } else {
@@ -1416,7 +1431,7 @@ impl Ming {
             pen_1.set_matrix2(cos_radian, sin_radian);
             pen_2.set_matrix2(cos_radian, sin_radian);
 
-            let mut polygon = Polygon::new(vec![
+            let polygon = Polygon::new(vec![
                 pen_1.get_point(0.0, -self.k_min_width_horizontal, false),
                 pen_2.get_point(0.0, -self.k_min_width_horizontal, false),
                 pen_2.get_point(0.0, self.k_min_width_horizontal, false),
@@ -1427,12 +1442,12 @@ impl Ming {
             match &tail_shape.kind {
                 // triangle terminal
                 &EndKind::Free => {
-                    let square_terminal_scale =
+                    let triangle_scale =
                         (self.k_min_width_triangle / self.k_min_width_horizontal - 1.0) / 4.0 + 1.0;
                     let mut polygon_2 = pen_2.get_polygon(&[
                         (0.0, -self.k_min_width_horizontal, false),
                         (
-                            -self.k_adjust_uroko_x[triangle_adjustment] * square_terminal_scale,
+                            -self.k_adjust_uroko_x[triangle_adjustment] * triangle_scale,
                             0.0,
                             false,
                         ),
@@ -1441,11 +1456,12 @@ impl Ming {
                         end_point.x
                             - (cos_radian - sin_radian)
                                 * self.k_adjust_uroko_x[triangle_adjustment]
+                                * triangle_scale
                                 / 2.0,
                         end_point.y
                             - (sin_radian + cos_radian)
                                 * self.k_adjust_uroko_y[triangle_adjustment]
-                                * square_terminal_scale,
+                                * triangle_scale,
                         Some(false),
                     );
                     polygons.push(polygon_2);
@@ -1456,9 +1472,497 @@ impl Ming {
     }
 }
 
+// index.ts
+impl Ming {
+    fn select_polygons_rect<P1, P2>(
+        polygons: &mut Polygons,
+        box_diag_1: P1,
+        box_diag_2: P2,
+    ) -> Vec<&mut Polygon>
+    where
+        P1: Into<Point>,
+        P2: Into<Point>,
+    {
+        let box_diag_1 = box_diag_1.into();
+        let box_diag_2 = box_diag_2.into();
+
+        polygons
+            .array_mut()
+            .filter(|polygon| {
+                polygon.points().iter().all(|point| {
+                    box_diag_1.x <= point.x
+                        && point.x <= box_diag_2.x
+                        && box_diag_1.y <= point.y
+                        && point.y <= box_diag_2.y
+                })
+            })
+            .collect()
+    }
+
+    fn df_transform(polygons: &mut Polygons, line_type: SpecialLineType) {
+        let polygon_vec =
+            Ming::select_polygons_rect(polygons, line_type.box_diag_1, line_type.box_diag_2);
+
+        match line_type.transform_type {
+            TransformType::HorizontalFlip => {
+                let [dx, dy] = [line_type.box_diag_1.x + line_type.box_diag_2.x, 0.0];
+                for polygon in polygon_vec {
+                    polygon.reflect_x().translate(dx, dy).floor();
+                }
+            }
+            TransformType::VerticalFlip => {
+                let [dx, dy] = [0.0, line_type.box_diag_1.y + line_type.box_diag_2.y];
+                for polygon in polygon_vec {
+                    polygon.reflect_y().translate(dx, dy).floor();
+                }
+            }
+            TransformType::Rotate90 => {
+                let [dx, dy] = [
+                    line_type.box_diag_1.x + line_type.box_diag_2.y,
+                    line_type.box_diag_1.y - line_type.box_diag_1.x,
+                ];
+                for polygon in polygon_vec {
+                    polygon.rotate_90().translate(dx, dy).floor();
+                }
+            }
+            TransformType::Rotate180 => {
+                let [dx, dy] = [
+                    line_type.box_diag_1.x + line_type.box_diag_2.x,
+                    line_type.box_diag_1.y + line_type.box_diag_2.y,
+                ];
+                for polygon in polygon_vec {
+                    polygon.rotate_180().translate(dx, dy).floor();
+                }
+            }
+            TransformType::Rotate270 => {
+                let [dx, dy] = [
+                    line_type.box_diag_1.x - line_type.box_diag_1.y,
+                    line_type.box_diag_2.y + line_type.box_diag_1.x,
+                ];
+                for polygon in polygon_vec {
+                    polygon.rotate_270().translate(dx, dy).floor();
+                }
+            }
+        }
+    }
+
+    pub fn df_draw_font(
+        &self,
+        polygons: &mut Polygons,
+        line: Line,
+        stroke_adjustment: AdjustedStroke,
+    ) {
+        match line {
+            Line::SpecialLine(special_line_type) => {
+                Ming::df_transform(polygons, special_line_type);
+            }
+            Line::StrokeLine(stroke_line_type) => {
+                match stroke_line_type.stroke_type.kind {
+                    StrokeKind::StraightLine => {
+                        if let EndKind::LeftUpwardFlick = stroke_line_type.tail_shape.kind {
+                            let delta_vector = if stroke_line_type.point_1.x
+                                == stroke_line_type.point_2.x
+                                && stroke_line_type.point_1.y == stroke_line_type.point_2.y
+                            {
+                                (0.0, self.k_mage).into()
+                            } else {
+                                normalize(
+                                    stroke_line_type.point_1 - stroke_line_type.point_2,
+                                    self.k_mage,
+                                )
+                            };
+                            let joint_point = stroke_line_type.point_2 + delta_vector;
+                            self.cd_draw_line(
+                                polygons,
+                                stroke_line_type.point_1,
+                                joint_point,
+                                stroke_line_type.head_shape,
+                                EndType::new(1.0),
+                                stroke_adjustment.vertical_adjustment,
+                                0,
+                                0,
+                            );
+                            self.cd_draw_quadratic_bezier(
+                                polygons,
+                                joint_point,
+                                stroke_line_type.point_2,
+                                (
+                                    stroke_line_type.point_2.x
+                                        - self.k_mage
+                                            * (((self.k_adjust_tate_step + 4.0)
+                                                - stroke_adjustment.vertical_adjustment)
+                                                / (self.k_adjust_tate_step + 4.0)),
+                                    stroke_line_type.point_2.y,
+                                )
+                                    .into(),
+                                EndType::new(1.0),
+                                EndType::new(14.0),
+                                stroke_adjustment.vertical_adjustment % 10.0,
+                                stroke_adjustment.flick_adjustment,
+                                (stroke_adjustment.vertical_adjustment / 10.0).floor(),
+                                stroke_line_type.tail_shape.opt_2 as f64,
+                            );
+                        } else {
+                            self.cd_draw_line(
+                                polygons,
+                                stroke_line_type.point_1,
+                                stroke_line_type.point_2,
+                                stroke_line_type.head_shape,
+                                stroke_line_type.tail_shape,
+                                stroke_adjustment.vertical_adjustment,
+                                stroke_adjustment.triangle_adjustment,
+                                stroke_adjustment.foot_adjustment,
+                            );
+                        }
+                    }
+                    StrokeKind::Curve => {
+                        // There is no 12 for the first column in glyphwiki data, so we only need to keep the logic of `case 2`.
+                        // TODO: slash_adjustment is too coupled, it is only used in `a2 === 132`
+                        if let EndKind::LeftUpwardFlick = stroke_line_type.tail_shape.kind {
+                            let delta_vector =
+                                if stroke_line_type.point_2.x == stroke_line_type.point_3.x {
+                                    (0.0, -self.k_mage).into()
+                                } else if stroke_line_type.point_2.y == stroke_line_type.point_3.y {
+                                    (-self.k_mage, 0.0).into()
+                                } else {
+                                    normalize(
+                                        stroke_line_type.point_2 - stroke_line_type.point_3,
+                                        self.k_mage,
+                                    )
+                                };
+                            let joint_point = stroke_line_type.point_3 + delta_vector;
+
+                            self.cd_draw_quadratic_bezier(
+                                polygons,
+                                stroke_line_type.point_1,
+                                stroke_line_type.point_2,
+                                joint_point,
+                                EndType::new(
+                                    stroke_line_type.head_shape.base as f64
+                                        + stroke_adjustment.slash_adjustment * 100.0,
+                                ),
+                                EndType::new(0.0),
+                                stroke_line_type.head_shape.opt_2 as f64,
+                                0.0,
+                                stroke_line_type.head_shape.opt_3 as f64,
+                                0.0,
+                            );
+                            self.cd_draw_quadratic_bezier(
+                                polygons,
+                                joint_point,
+                                stroke_line_type.point_3,
+                                (
+                                    stroke_line_type.point_3.x - self.k_mage,
+                                    stroke_line_type.point_3.y,
+                                    false,
+                                )
+                                    .into(),
+                                EndType::new(2.0),
+                                EndType::new(14.0),
+                                stroke_line_type.head_shape.opt_2 as f64,
+                                stroke_adjustment.flick_adjustment,
+                                0.0,
+                                stroke_line_type.tail_shape.opt_2 as f64,
+                            );
+                        } else {
+                            let new_tail_shape = if let EndKind::RightUpwardFlick =
+                                stroke_line_type.tail_shape.kind
+                            {
+                                EndType::new(15.0)
+                            } else {
+                                stroke_line_type.tail_shape
+                            };
+
+                            self.cd_draw_quadratic_bezier(
+                                polygons,
+                                stroke_line_type.point_1,
+                                stroke_line_type.point_2,
+                                stroke_line_type.point_3,
+                                EndType::new(
+                                    stroke_line_type.head_shape.base as f64
+                                        + stroke_adjustment.slash_adjustment * 100.0,
+                                ),
+                                new_tail_shape,
+                                stroke_line_type.head_shape.opt_2 as f64,
+                                stroke_line_type.tail_shape.opt_1 as f64,
+                                stroke_line_type.head_shape.opt_3 as f64,
+                                stroke_line_type.tail_shape.opt_2 as f64,
+                            );
+                        }
+                    }
+                    StrokeKind::BendLine => {
+                        let delta_vector_1 = if stroke_line_type.point_1.x
+                            == stroke_line_type.point_2.x
+                            && stroke_line_type.point_1.y == stroke_line_type.point_2.y
+                        {
+                            (0.0, self.k_mage).into()
+                        } else {
+                            normalize(
+                                stroke_line_type.point_1 - stroke_line_type.point_2,
+                                self.k_mage,
+                            )
+                        };
+                        let joint_point_1 = stroke_line_type.point_2 + delta_vector_1;
+
+                        let delta_vector_2 = if stroke_line_type.point_2.x
+                            == stroke_line_type.point_3.x
+                            && stroke_line_type.point_2.y == stroke_line_type.point_3.y
+                        {
+                            (0.0, -self.k_mage).into()
+                        } else {
+                            normalize(
+                                stroke_line_type.point_3 - stroke_line_type.point_2,
+                                self.k_mage,
+                            )
+                        };
+                        let joint_point_2 = stroke_line_type.point_2 + delta_vector_2;
+
+                        self.cd_draw_line(
+                            polygons,
+                            stroke_line_type.point_1,
+                            joint_point_1,
+                            EndType::new(
+                                stroke_line_type.head_shape.base as f64
+                                    + stroke_line_type.head_shape.opt_1 as f64 * 100.0,
+                            ),
+                            EndType::new(1.0),
+                            stroke_adjustment.vertical_adjustment,
+                            0,
+                            0,
+                        );
+                        self.cd_draw_quadratic_bezier(
+                            polygons,
+                            joint_point_1,
+                            stroke_line_type.point_2,
+                            joint_point_2,
+                            EndType::new(1.0),
+                            EndType::new(1.0),
+                            0.0,
+                            0.0,
+                            stroke_adjustment.vertical_adjustment,
+                            stroke_adjustment.curve_adjustment,
+                        );
+
+                        let should_skip_tail =
+                            matches!(stroke_line_type.tail_shape.kind, EndKind::RightUpwardFlick)
+                                && stroke_line_type.tail_shape.opt_1 == 0
+                                && !((stroke_line_type.point_2.x < stroke_line_type.point_3.x
+                                    && stroke_line_type.point_3.x - joint_point_2.x > 0.0)
+                                    || (stroke_line_type.point_2.x > stroke_line_type.point_3.x
+                                        && joint_point_2.x - stroke_line_type.point_3.x > 0.0));
+
+                        if !should_skip_tail {
+                            // TODO: opt_2 seems unnecessary?
+                            let opt_2 = if matches!(
+                                stroke_line_type.tail_shape.kind,
+                                EndKind::RightUpwardFlick
+                            ) && stroke_line_type.tail_shape.opt_1 == 0
+                            {
+                                0
+                            } else {
+                                (stroke_line_type.tail_shape.opt_1 as f64
+                                    + stroke_adjustment.curve_adjustment * 10.0)
+                                    as usize
+                            };
+
+                            self.cd_draw_line(
+                                polygons,
+                                joint_point_2,
+                                stroke_line_type.point_3,
+                                EndType::new(6.0),
+                                stroke_line_type.tail_shape,
+                                stroke_adjustment.curve_adjustment,
+                                opt_2,
+                                opt_2,
+                            );
+                        }
+                    }
+                    StrokeKind::OtsuCurve => {
+                        let scale_factor =
+                            (Vector::from(stroke_line_type.point_3 - stroke_line_type.point_2)
+                                .hypot()
+                                / 120.0
+                                * 6.0)
+                                .min(6.0);
+
+                        let delta_vector_1 = if stroke_line_type.point_1.x
+                            == stroke_line_type.point_2.x
+                            && stroke_line_type.point_1.y == stroke_line_type.point_2.y
+                        {
+                            (0.0, self.k_mage * scale_factor).into()
+                        } else {
+                            normalize(
+                                stroke_line_type.point_1 - stroke_line_type.point_2,
+                                self.k_mage * scale_factor,
+                            )
+                        };
+                        let joint_point_1 = stroke_line_type.point_2 + delta_vector_1;
+
+                        let delta_vector_2 = if stroke_line_type.point_2.x
+                            == stroke_line_type.point_3.x
+                            && stroke_line_type.point_2.y == stroke_line_type.point_3.y
+                        {
+                            (0.0, -self.k_mage * scale_factor).into()
+                        } else {
+                            normalize(
+                                stroke_line_type.point_3 - stroke_line_type.point_2,
+                                self.k_mage * scale_factor,
+                            )
+                        };
+                        let joint_point_2 = stroke_line_type.point_2 + delta_vector_2;
+
+                        self.cd_draw_line(
+                            polygons,
+                            stroke_line_type.point_1,
+                            joint_point_1,
+                            EndType::new(
+                                stroke_line_type.head_shape.base as f64
+                                    + stroke_line_type.head_shape.opt_1 as f64 * 100.0,
+                            ),
+                            EndType::new(1.0),
+                            (stroke_line_type.head_shape.opt_2
+                                + stroke_line_type.head_shape.opt_3 * 10)
+                                as f64,
+                            0,
+                            0,
+                        );
+                        self.cd_draw_quadratic_bezier(
+                            polygons,
+                            joint_point_1,
+                            stroke_line_type.point_2,
+                            joint_point_2,
+                            EndType::new(1.0),
+                            EndType::new(1.0),
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                        );
+
+                        if !(matches!(stroke_line_type.tail_shape.kind, EndKind::RightUpwardFlick)
+                            && stroke_line_type.tail_shape.opt == 0
+                            && stroke_line_type.point_3.x - joint_point_2.x <= 0.0)
+                        {
+                            self.cd_draw_line(
+                                polygons,
+                                joint_point_2,
+                                stroke_line_type.point_3,
+                                EndType::new(6.0),
+                                stroke_line_type.tail_shape,
+                                0.0,
+                                stroke_line_type.tail_shape.opt_1 as usize, // opt or opt_1?
+                                stroke_line_type.tail_shape.opt_1 as usize, // opt or opt_1?
+                            );
+                        }
+                    }
+                    StrokeKind::ComplexCurve => {
+                        if matches!(stroke_line_type.tail_shape.kind, EndKind::LeftUpwardFlick) {
+                            let delta_vector =
+                                if stroke_line_type.point_3.x == stroke_line_type.point_4.x {
+                                    (0.0, -self.k_mage).into()
+                                } else if stroke_line_type.point_3.y == stroke_line_type.point_4.y {
+                                    (-self.k_mage, 0.0).into()
+                                } else {
+                                    normalize(
+                                        stroke_line_type.point_3 - stroke_line_type.point_4,
+                                        self.k_mage,
+                                    )
+                                };
+
+                            let joint_point = stroke_line_type.point_4 + delta_vector;
+                            self.cd_draw_cubic_bezier(
+                                polygons,
+                                stroke_line_type.point_1,
+                                stroke_line_type.point_2,
+                                stroke_line_type.point_3,
+                                joint_point,
+                                stroke_line_type.head_shape,
+                                EndType::new(1.0),
+                                stroke_line_type.head_shape.opt_2 as f64,
+                                0.0,
+                                stroke_line_type.head_shape.opt_3 as f64,
+                                0.0,
+                            );
+                            self.cd_draw_quadratic_bezier(
+                                polygons,
+                                joint_point,
+                                stroke_line_type.point_4,
+                                (
+                                    stroke_line_type.point_4.x - self.k_mage,
+                                    stroke_line_type.point_4.y,
+                                    false,
+                                )
+                                    .into(),
+                                EndType::new(1.0),
+                                EndType::new(14.0),
+                                0.0,
+                                stroke_adjustment.flick_adjustment,
+                                0.0,
+                                stroke_line_type.tail_shape.opt_2 as f64,
+                            );
+                        } else {
+                            let tail_shape = if matches!(
+                                stroke_line_type.tail_shape.kind,
+                                EndKind::RightUpwardFlick
+                            ) && stroke_line_type.tail_shape.opt == 0
+                            {
+                                EndType::new(15.0)
+                            } else {
+                                EndType::new(stroke_line_type.tail_shape.base as f64)
+                            };
+
+                            self.cd_draw_cubic_bezier(
+                                polygons,
+                                stroke_line_type.point_1,
+                                stroke_line_type.point_2,
+                                stroke_line_type.point_3,
+                                stroke_line_type.point_4,
+                                stroke_line_type.head_shape,
+                                tail_shape,
+                                stroke_line_type.head_shape.opt_2 as f64,
+                                stroke_line_type.tail_shape.opt_1 as f64,
+                                stroke_line_type.head_shape.opt_3 as f64,
+                                stroke_line_type.tail_shape.opt_2 as f64,
+                            );
+                        }
+                    }
+                    StrokeKind::VerticalSlash => {
+                        self.cd_draw_line(
+                            polygons,
+                            stroke_line_type.point_1,
+                            stroke_line_type.point_2,
+                            stroke_line_type.head_shape,
+                            EndType::new(1.0),
+                            stroke_adjustment.vertical_adjustment,
+                            0,
+                            0,
+                        );
+                        self.cd_draw_quadratic_bezier(
+                            polygons,
+                            stroke_line_type.point_2,
+                            stroke_line_type.point_3,
+                            stroke_line_type.point_4,
+                            EndType::new(1.0),
+                            EndType::new(stroke_line_type.tail_shape.base as f64),
+                            stroke_adjustment.vertical_adjustment % 10.0,
+                            stroke_line_type.tail_shape.opt_1 as f64,
+                            (stroke_adjustment.vertical_adjustment / 10.0).floor(),
+                            stroke_line_type.tail_shape.opt_2 as f64,
+                        );
+                    }
+                    // This arm should be reinterpretated as `Line::Unknown` in previous steps.
+                    _ => {}
+                }
+            }
+            // Ignore unknown line type.
+            _ => {}
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
-    use crate::{font::ming::Ming, polygons::Polygons, stroke::EndType};
+    use crate::{font::ming::Ming, line::stroke_line::EndType, polygons::Polygons};
 
     fn init(use_curve: bool) -> Ming {
         Ming {
@@ -1569,8 +2073,7 @@ mod test {
         println!(
             "{}",
             polygons
-                .array
-                .iter()
+                .array()
                 .map(|each| {
                     let mut tmp = String::new();
                     for point in each.points() {
@@ -1583,7 +2086,7 @@ mod test {
         );
     }
 
-    fn init_2() -> Ming {
+    fn init_2(use_curve: bool) -> Ming {
         Ming {
             k_rate: 100,
             k_min_width_horizontal: 16.0,
@@ -1593,7 +2096,7 @@ mod test {
             k_square_terminal: 3.0,
             k_l2rdfatten: 1.1,
             k_mage: 10.0,
-            k_use_curve: false,
+            k_use_curve: use_curve,
             k_adjust_kakato_l: vec![0.0, 2.0, 4.0, 6.0, 8.0],
             k_adjust_kakato_r: vec![0.0, 3.0, 6.0, 9.0, 12.0],
             k_adjust_kakato_range_x: 20.0,
@@ -1613,7 +2116,7 @@ mod test {
 
     #[test]
     fn test_cd_draw_line() {
-        let ming = init_2();
+        let ming = init_2(false);
         let mut polygons = Polygons::new();
 
         ming.cd_draw_line(
@@ -1629,8 +2132,162 @@ mod test {
         println!(
             "{}",
             polygons
-                .array
-                .iter()
+                .array()
+                .map(|each| {
+                    let mut tmp = String::new();
+                    for point in each.points() {
+                        tmp.push_str(&format!("{},{} ", point.x, point.y));
+                    }
+                    tmp
+                })
+                .collect::<Vec<String>>()
+                .join("\n")
+        );
+    }
+
+    #[test]
+    fn test_cd_draw_line_2() {
+        let ming = init_2(true);
+        let mut polygons = Polygons::new();
+
+        ming.cd_draw_line(
+            &mut polygons,
+            (80.0, 50.0).into(),
+            (80.0, 140.0).into(),
+            EndType::new(6.0),
+            EndType::new(5.0),
+            2.0,
+            0,
+            0,
+        );
+        println!(
+            "{}",
+            polygons
+                .array()
+                .map(|each| {
+                    let mut tmp = String::new();
+                    for point in each.points() {
+                        tmp.push_str(&format!("{},{} ", point.x, point.y));
+                    }
+                    tmp
+                })
+                .collect::<Vec<String>>()
+                .join("\n")
+        );
+    }
+
+    #[test]
+    fn test_cd_draw_line_3() {
+        let ming = init_2(false);
+        let mut polygons = Polygons::new();
+
+        ming.cd_draw_line(
+            &mut polygons,
+            (40.0, 200.0).into(),
+            (160.0, 200.0).into(),
+            EndType::new(6.0),
+            EndType::new(0.0),
+            1.0,
+            0,
+            0,
+        );
+        println!(
+            "{}",
+            polygons
+                .array()
+                .map(|each| {
+                    let mut tmp = String::new();
+                    for point in each.points() {
+                        tmp.push_str(&format!("{},{} ", point.x, point.y));
+                    }
+                    tmp
+                })
+                .collect::<Vec<String>>()
+                .join("\n")
+        );
+    }
+
+    #[test]
+    fn test_cd_draw_line_4() {
+        let ming = init_2(false);
+        let mut polygons = Polygons::new();
+
+        ming.cd_draw_line(
+            &mut polygons,
+            (60.0, 60.0).into(),
+            (160.0, 120.0).into(),
+            EndType::new(22.0),
+            EndType::new(24.0),
+            0.0,
+            0,
+            0,
+        );
+        println!(
+            "{}",
+            polygons
+                .array()
+                .map(|each| {
+                    let mut tmp = String::new();
+                    for point in each.points() {
+                        tmp.push_str(&format!("{},{} ", point.x, point.y));
+                    }
+                    tmp
+                })
+                .collect::<Vec<String>>()
+                .join("\n")
+        );
+    }
+
+    #[test]
+    fn test_cd_draw_line_5() {
+        let ming = init_2(false);
+        let mut polygons = Polygons::new();
+
+        ming.cd_draw_line(
+            &mut polygons,
+            (50.0, 150.0).into(),
+            (140.0, 100.0).into(),
+            EndType::new(1.0),
+            EndType::new(0.0),
+            3.0,
+            2,
+            0,
+        );
+        println!(
+            "{}",
+            polygons
+                .array()
+                .map(|each| {
+                    let mut tmp = String::new();
+                    for point in each.points() {
+                        tmp.push_str(&format!("{},{} ", point.x, point.y));
+                    }
+                    tmp
+                })
+                .collect::<Vec<String>>()
+                .join("\n")
+        );
+    }
+
+    #[test]
+    fn test_cd_draw_line_6() {
+        let ming = init_2(false);
+        let mut polygons = Polygons::new();
+
+        ming.cd_draw_line(
+            &mut polygons,
+            (120.0, 40.0).into(),
+            (120.0, 160.0).into(),
+            EndType::new(12.0),
+            EndType::new(413.0),
+            0.0,
+            0,
+            0,
+        );
+        println!(
+            "{}",
+            polygons
+                .array()
                 .map(|each| {
                     let mut tmp = String::new();
                     for point in each.points() {

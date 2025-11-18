@@ -1,4 +1,5 @@
-mod ming;
+pub mod ming;
+pub mod stroke_adjustment;
 
 pub enum Font {
     /// https://en.wikipedia.org/wiki/Ming_typefaces

@@ -36,7 +36,7 @@ where
     Point::new(x, y, origin_point.off_curve)
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub(crate) enum StrokeKind {
     // 1 ~ 6: Stroke Lines
     /// 直線
@@ -63,15 +63,15 @@ pub(crate) enum StrokeKind {
     // SpecialLine = 0,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub(crate) struct StrokeType {
+    pub(crate) kind: StrokeKind,
     pub(crate) base: u32,
     pub(crate) opt: u32,
-    pub(crate) kind: StrokeKind,
 }
 
 impl StrokeType {
-    fn new(num: f64) -> Self {
+    pub(crate) fn new(num: f64) -> Self {
         let num_base = num as u32 % 100;
         let num_opt = (num / 100.0).floor() as u32;
 
@@ -138,12 +138,12 @@ pub(crate) enum EndKind {
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub(crate) struct EndType {
+    pub(crate) kind: EndKind,
     pub(crate) base: u32,
     pub(crate) opt: u32,
     pub(crate) opt_1: u32,
     pub(crate) opt_2: u32,
     pub(crate) opt_3: u32,
-    pub(crate) kind: EndKind,
 }
 
 impl EndType {
@@ -206,38 +206,38 @@ struct Bounds {
 }
 
 // https://glyphwiki.org/wiki/GlyphWiki:KAGE%E3%83%87%E3%83%BC%E3%82%BF%E4%BB%95%E6%A7%98#i3
-#[derive(Debug, PartialEq)]
-struct Stroke {
-    stroke_type: StrokeType,
-    head_shape: EndType,
-    tail_shape: EndType,
-    point_1: Point,
-    point_2: Point,
-    point_3: Point,
-    point_4: Point,
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub struct StrokeLineType {
+    pub(crate) stroke_type: StrokeType,
+    pub(crate) head_shape: EndType,
+    pub(crate) tail_shape: EndType,
+    pub(crate) point_1: Point,
+    pub(crate) point_2: Point,
+    pub(crate) point_3: Point,
+    pub(crate) point_4: Point,
 }
 
-impl Stroke {
-    fn new(
-        field1: f64,
-        field2: f64,
-        field3: f64,
-        field4: f64,
-        field5: f64,
-        field6: f64,
-        field7: f64,
-        field8: f64,
-        field9: f64,
-        field10: f64,
-        field11: f64,
+impl StrokeLineType {
+    pub(crate) fn new(
+        field_1: f64,
+        field_2: f64,
+        field_3: f64,
+        field_4: f64,
+        field_5: f64,
+        field_6: f64,
+        field_7: f64,
+        field_8: f64,
+        field_9: f64,
+        field_10: f64,
+        field_11: f64,
     ) -> Self {
-        let stroke_type = StrokeType::new(field1);
-        let head_shape = EndType::new(field2);
-        let tail_shape = EndType::new(field3);
-        let point_1 = (field4, field5, None).into();
-        let point_2 = (field6, field7, None).into();
-        let point_3 = (field8, field9, None).into();
-        let point_4 = (field10, field11, None).into();
+        let stroke_type = StrokeType::new(field_1);
+        let head_shape = EndType::new(field_2);
+        let tail_shape = EndType::new(field_3);
+        let point_1 = (field_4, field_5, None).into();
+        let point_2 = (field_6, field_7, None).into();
+        let point_3 = (field_8, field_9, None).into();
+        let point_4 = (field_10, field_11, None).into();
 
         Self {
             stroke_type,
@@ -366,7 +366,9 @@ mod test {
     use core::f64;
 
     use crate::{
-        stroke::{self, Bounds, EndKind, EndType, Stroke, StrokeKind, StrokeType, stretch},
+        line::stroke_line::{
+            Bounds, EndKind, EndType, StrokeKind, StrokeLineType, StrokeType, stretch,
+        },
         utils::Point,
     };
 
@@ -474,11 +476,12 @@ mod test {
 
     #[test]
     fn test_construction() {
-        let stroke1 = Stroke::new(1.0, 0.0, 2.0, 32.0, 31.0, 176.0, 31.0, 0.0, 0.0, 0.0, 0.0);
+        let stroke1 =
+            StrokeLineType::new(1.0, 0.0, 2.0, 32.0, 31.0, 176.0, 31.0, 0.0, 0.0, 0.0, 0.0);
 
         assert_eq!(
             stroke1,
-            Stroke {
+            StrokeLineType {
                 stroke_type: StrokeType {
                     base: 1,
                     opt: 0,
@@ -558,7 +561,7 @@ mod test {
 
     #[test]
     fn test_different_stroke_type() {
-        let stroke2 = Stroke::new(
+        let stroke2 = StrokeLineType::new(
             2.0, 22.0, 7.0, 176.0, 31.0, 170.0, 43.0, 156.0, 63.0, 0.0, 0.0,
         );
 
@@ -595,7 +598,7 @@ mod test {
             ]
         );
 
-        let stroke3 = Stroke::new(
+        let stroke3 = StrokeLineType::new(
             3.0, 0.0, 0.0, 100.0, 100.0, 150.0, 50.0, 200.0, 100.0, 250.0, 150.0,
         );
 
@@ -650,7 +653,8 @@ mod test {
 
     #[test]
     fn test_cross() {
-        let stroke4 = Stroke::new(1.0, 0.0, 0.0, 0.0, 0.0, 100.0, 100.0, 0.0, 0.0, 0.0, 0.0);
+        let stroke4 =
+            StrokeLineType::new(1.0, 0.0, 0.0, 0.0, 0.0, 100.0, 100.0, 0.0, 0.0, 0.0, 0.0);
 
         assert_eq!(stroke4.is_cross((50.0, 50.0), (150.0, 150.0)), false);
         assert_eq!(stroke4.is_cross((200.0, 200.0), (300.0, 300.0)), false);
@@ -660,7 +664,8 @@ mod test {
 
     #[test]
     fn test_stroke_stretch() {
-        let mut stroke6 = Stroke::new(1.0, 0.0, 0.0, 50.0, 50.0, 100.0, 100.0, 0.0, 0.0, 0.0, 0.0);
+        let mut stroke6 =
+            StrokeLineType::new(1.0, 0.0, 0.0, 50.0, 50.0, 100.0, 100.0, 0.0, 0.0, 0.0, 0.0);
 
         assert_eq!(
             stroke6.get_box(),
@@ -699,7 +704,7 @@ mod test {
 
     #[test]
     fn test_edge_case() {
-        let stroke7 = Stroke::new(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+        let stroke7 = StrokeLineType::new(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
 
         assert_eq!(stroke7.get_control_segments(), vec![]);
         assert_eq!(
@@ -721,7 +726,7 @@ mod test {
 
     #[test]
     fn test_large_number() {
-        let stroke8 = Stroke::new(
+        let stroke8 = StrokeLineType::new(
             1.0, 0.0, 0.0, 1000.0, 1000.0, 2000.0, 2000.0, 0.0, 0.0, 0.0, 0.0,
         );
 
@@ -744,7 +749,7 @@ mod test {
 
     #[test]
     fn test_negtive_number() {
-        let stroke9 = Stroke::new(
+        let stroke9 = StrokeLineType::new(
             1.0, 0.0, 0.0, -100.0, -100.0, -50.0, -50.0, 0.0, 0.0, 0.0, 0.0,
         );
 

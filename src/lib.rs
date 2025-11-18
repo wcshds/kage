@@ -1,9 +1,9 @@
 pub(crate) mod component;
 pub(crate) mod curve;
-pub(crate) mod font;
+pub mod font;
+pub mod line;
 pub(crate) mod pen;
 pub(crate) mod polygon;
-pub(crate) mod polygons;
-pub(crate) mod stroke;
+pub mod polygons;
 pub(crate) mod two_d;
 pub(crate) mod utils;

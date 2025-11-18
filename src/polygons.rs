@@ -1,10 +1,12 @@
+use core::slice;
+
 use time::{OffsetDateTime, macros::format_description};
 
 use crate::polygon::Polygon;
 
 #[derive(Debug)]
 pub struct Polygons {
-    pub(crate) array: Vec<Polygon>,
+    array: Vec<Polygon>,
 }
 
 impl Polygons {
@@ -14,6 +16,14 @@ impl Polygons {
 
     pub fn clear(&mut self) {
         self.array.clear();
+    }
+
+    pub fn array(&self) -> slice::Iter<'_, Polygon> {
+        self.array.iter()
+    }
+
+    pub fn array_mut(&mut self) -> slice::IterMut<'_, Polygon> {
+        self.array.iter_mut()
     }
 
     pub fn push(&mut self, mut polygon: Polygon) {
