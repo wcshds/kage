@@ -52,7 +52,7 @@ impl<'a> Line<'a> {
         macro_rules! get_field_num {
             ($field:expr) => {{
                 match $field {
-                    FieldType::Num(field) => field,
+                    FieldType::Num(field) => field.floor(),
                     _ => return Line::Unknown,
                 }
             }};

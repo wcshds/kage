@@ -428,30 +428,36 @@ impl Ming {
                     polygons.push(polygon_2);
                 }
             }
-            &EndKind::TopRightCorner | &EndKind::RoofedNarrowEntry => {
+            &EndKind::TopRightCorner => {
                 let pen = Pen::new(start_point.x - corner_offset, start_point.y);
-                let mut polygon_1 = pen.get_polygon(&[
+                let polygon = pen.get_polygon(&[
                     (-min_width_vertical, -self.k_min_width_horizontal),
                     (0.0, -self.k_min_width_horizontal - self.k_width),
                     (
                         min_width_vertical + self.k_width,
                         self.k_min_width_horizontal,
                     ),
-                    (min_width_vertical, self.k_min_width_vertical - 1.0),
+                    (min_width_vertical, min_width_vertical - 1.0),
+                    (-min_width_vertical, min_width_vertical + 4.0),
                 ]);
-                let polygon_2 = if matches!(&head_shape.kind, &EndKind::RoofedNarrowEntry) {
-                    Polygon::new::<Point>(vec![
-                        (0.0, self.k_min_width_vertical + 2.0).into(),
-                        (0.0, 0.0).into(),
-                    ])
-                } else {
-                    Polygon::new::<Point>(vec![
-                        (-self.k_min_width_vertical, self.k_min_width_vertical + 4.0).into(),
-                    ])
-                };
 
-                polygon_1.concat(polygon_2);
-                polygons.push(polygon_1);
+                polygons.push(polygon);
+            }
+            &EndKind::RoofedNarrowEntry => {
+                let pen = Pen::new(start_point.x - corner_offset, start_point.y);
+                let polygon = pen.get_polygon(&[
+                    (-min_width_vertical, -self.k_min_width_horizontal),
+                    (0.0, -self.k_min_width_horizontal - self.k_width),
+                    (
+                        min_width_vertical + self.k_width,
+                        self.k_min_width_horizontal,
+                    ),
+                    (min_width_vertical, min_width_vertical - 1.0),
+                    (0.0, min_width_vertical + 2.0),
+                    (0.0, 0.0),
+                ]);
+
+                polygons.push(polygon);
             }
             _ => {}
         }
@@ -1199,55 +1205,51 @@ impl Ming {
                 &EndKind::TopRightCorner => {
                     // keep the angle of the wedge unchanged even if the stroke is oblique
                     let pen = Pen::new(start_point.x, start_point.y);
-                    let mut polygon_1 = pen.get_polygon(&[
-                        (-min_width_vertical, -self.k_min_width_horizontal, false),
-                        (0.0, -self.k_min_width_horizontal - self.k_width, false),
-                        (
-                            min_width_vertical + self.k_width,
-                            self.k_min_width_horizontal,
-                            false,
-                        ),
-                    ]);
-                    let polygon_2 = if start_point.x == end_point.x {
-                        Polygon::new(vec![
-                            (min_width_vertical, min_width_vertical, false),
-                            (-min_width_vertical, 0.0, false),
-                        ])
+
+                    let mut local_points = Vec::with_capacity(5);
+                    local_points.push((-min_width_vertical, -self.k_min_width_horizontal, false));
+                    local_points.push((0.0, -self.k_min_width_horizontal - self.k_width, false));
+                    local_points.push((
+                        min_width_vertical + self.k_width,
+                        self.k_min_width_horizontal,
+                        false,
+                    ));
+
+                    if start_point.x == end_point.x {
+                        local_points.push((min_width_vertical, min_width_vertical, false));
+                        local_points.push((-min_width_vertical, 0.0, false))
                     } else {
-                        Polygon::new(vec![
-                            (min_width_vertical, min_width_vertical - 1.0, false),
-                            (-min_width_vertical, min_width_vertical + 4.0, false),
-                        ])
+                        local_points.push((min_width_vertical, min_width_vertical - 1.0, false));
+                        local_points.push((-min_width_vertical, min_width_vertical + 4.0, false))
                     };
-                    polygon_1.concat(polygon_2);
-                    polygons.push(polygon_1);
+
+                    let polygon = pen.get_polygon(&local_points);
+                    polygons.push(polygon);
                 }
                 &EndKind::RoofedNarrowEntry => {
                     // keep the angle of the wedge unchanged even if the stroke is oblique
                     let pen = Pen::new(start_point.x, start_point.y);
-                    let mut polygon_1 = pen.get_polygon(&[
-                        (-min_width_vertical, -self.k_min_width_horizontal, false),
-                        (0.0, -self.k_min_width_horizontal - self.k_width, false),
-                        (
-                            min_width_vertical + self.k_width,
-                            self.k_min_width_horizontal,
-                            false,
-                        ),
-                    ]);
-                    let polygon_2 = if start_point.x == end_point.x {
-                        Polygon::new(vec![
-                            (min_width_vertical, min_width_vertical, false),
-                            (-min_width_vertical, 0.0, false),
-                        ])
+
+                    let mut local_points = Vec::with_capacity(6);
+                    local_points.push((-min_width_vertical, -self.k_min_width_horizontal, false));
+                    local_points.push((0.0, -self.k_min_width_horizontal - self.k_width, false));
+                    local_points.push((
+                        min_width_vertical + self.k_width,
+                        self.k_min_width_horizontal,
+                        false,
+                    ));
+
+                    if start_point.x == end_point.x {
+                        local_points.push((min_width_vertical, min_width_vertical, false));
+                        local_points.push((-min_width_vertical, 0.0, false))
                     } else {
-                        Polygon::new(vec![
-                            (min_width_vertical, min_width_vertical - 1.0, false),
-                            (0.0, min_width_vertical + 2.0, false),
-                            (0.0, 0.0, false),
-                        ])
+                        local_points.push((min_width_vertical, min_width_vertical - 1.0, false));
+                        local_points.push((0.0, min_width_vertical + 2.0, false));
+                        local_points.push((0.0, 0.0, false));
                     };
-                    polygon_1.concat(polygon_2);
-                    polygons.push(polygon_1);
+
+                    let polygon = pen.get_polygon(&local_points);
+                    polygons.push(polygon);
                 }
                 &EndKind::Free => {
                     let polygon = pen_1.get_polygon(&[
