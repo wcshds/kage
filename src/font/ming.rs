@@ -101,9 +101,9 @@ impl Ming {
             let thinness_ratio = 0.5;
             let width_delta_func = |progress: f64| -> f64 {
                 match (&head_shape.kind, &tail_shape.kind) {
-                    (&EndKind::Narrow, &EndKind::Free) => progress * thinness_ratio * 1.1,
-                    (&EndKind::Narrow, _) => progress * thinness_ratio,
-                    (_, &EndKind::Narrow) => (1.0 - progress) * thinness_ratio,
+                    (&EndKind::Narrow, &EndKind::Free) => progress.powf(thinness_ratio) * 1.1,
+                    (&EndKind::Narrow, _) => progress.powf(thinness_ratio),
+                    (_, &EndKind::Narrow) => (1.0 - progress).powf(thinness_ratio),
                     _ if start_width_reduction > 0.0 => {
                         // ???
                         let start_reduction = (start_width_reduction / 2.0)
@@ -218,10 +218,10 @@ impl Ming {
                         if is_quadratic {
                             progress.powf(thinness_ratio)
                         } else {
-                            progress.powf(thinness_ratio) * 0.7
+                            progress.powf(thinness_ratio * 0.7)
                         }
                     }
-                    (_, &EndKind::Narrow) => (1.0 - progress) * thinness_ratio,
+                    (_, &EndKind::Narrow) => (1.0 - progress).powf(thinness_ratio),
                     _ if is_quadratic
                         && (start_width_reduction > 0.0 || width_change_rate > 0.0) =>
                     {
