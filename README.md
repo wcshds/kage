@@ -7,7 +7,7 @@ An experimental port of the Kage engine to Rust. This project is still in a very
 To run the example, you first need to download the GlyphWiki data:
 
 ```bash
-curl -O http://glyphwiki.org/dump.tar.gz
+curl -O https://glyphwiki.org/dump.tar.gz
 mkdir ./data
 tar -xzf dump.tar.gz -C ./data
 ```
