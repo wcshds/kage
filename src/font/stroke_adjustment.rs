@@ -1,6 +1,6 @@
 use crate::{font::ming::Ming, line::stroke_line::StrokeLineType, two_d, utils::Point};
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct AdjustedStroke {
     /// origin name: kirikuchiAdjustment
     pub(crate) slash_adjustment: f64,
@@ -187,10 +187,10 @@ impl StrokeAdjustmentTrait for Ming {
                         if target_idx != other_idx && !(x1 + 1.0 > other_x2 || x2 - 1.0 < other_x1)
                         {
                             let dy = (y - other_y).abs();
-                            if dy.round() < self.k_min_width_vertical * self.k_adjust_mage_step {
+                            if dy.round() < self.min_width_vertical * self.k_adjust_mage_step {
                                 let adj = &mut adjusted[target_idx].1;
                                 adj.curve_adjustment += self.k_adjust_mage_step
-                                    - (dy / self.k_min_width_vertical).floor();
+                                    - (dy / self.min_width_vertical).floor();
                                 if adj.curve_adjustment > self.k_adjust_mage_step {
                                     adj.curve_adjustment = self.k_adjust_mage_step;
                                 }
@@ -220,10 +220,10 @@ impl StrokeAdjustmentTrait for Ming {
                 for &(other_idx, other_x, other_y1, other_y2) in &vert_segments {
                     if idx != other_idx && !(y1 + 1.0 > other_y2 || y2 - 1.0 < other_y1) {
                         let dx = (x - other_x).abs();
-                        if dx.round() < self.k_min_width_vertical * self.k_adjust_tate_step {
+                        if dx.round() < self.min_width_vertical * self.k_adjust_tate_step {
                             let adj = &mut adjusted[idx].1;
                             adj.vertical_adjustment +=
-                                self.k_adjust_tate_step - (dx / self.k_min_width_vertical).floor();
+                                self.k_adjust_tate_step - (dx / self.min_width_vertical).floor();
                             if adj.vertical_adjustment > self.k_adjust_tate_step
                                 || (adj.vertical_adjustment == self.k_adjust_tate_step
                                     && (head_shape.opt_1 != 0 || head_shape.base != 0))
@@ -434,42 +434,4 @@ impl StrokeAdjustmentTrait for Ming {
 }
 
 #[cfg(test)]
-mod test {
-    use crate::{
-        font::{ming::Ming, stroke_adjustment::StrokeAdjustmentTrait},
-        line::{
-            Line,
-            stroke_line::{EndKind, StrokeKind},
-        },
-        polygon::Polygon,
-        polygons::Polygons,
-    };
-
-    fn init(use_curve: bool) -> Ming {
-        Ming {
-            k_rate: 100,
-            k_min_width_horizontal: 2.0,
-            k_min_width_triangle: 2.0,
-            k_min_width_vertical: 6.0,
-            k_width: 5.0,
-            k_square_terminal: 3.0,
-            k_l2rdfatten: 1.1,
-            k_mage: 10.0,
-            k_use_curve: use_curve,
-            k_adjust_kakato_l: vec![14.0, 9.0, 5.0, 2.0, 0.0],
-            k_adjust_kakato_r: vec![8.0, 6.0, 4.0, 2.0],
-            k_adjust_kakato_range_x: 20.0,
-            k_adjust_kakato_range_y: vec![1.0, 19.0, 24.0, 30.0],
-            k_adjust_kakato_step: 3.0,
-            k_adjust_uroko_x: vec![24.0, 20.0, 16.0, 12.0],
-            k_adjust_uroko_y: vec![12.0, 11.0, 9.0, 8.0],
-            k_adjust_uroko_length: vec![22.0, 36.0, 50.0],
-            k_adjust_uroko_length_step: 3.0,
-            k_adjust_uroko_line: vec![22.0, 26.0, 30.0],
-            k_adjust_uroko2_step: 3.0,
-            k_adjust_uroko2_length: 40.0,
-            k_adjust_tate_step: 4.0,
-            k_adjust_mage_step: 5.0,
-        }
-    }
-}
+mod test {}

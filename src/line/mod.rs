@@ -9,7 +9,7 @@ use crate::line::{
 };
 
 #[derive(Debug, PartialEq)]
-pub enum Line<'a> {
+pub(crate) enum Line<'a> {
     /// 特殊行
     SpecialLine(SpecialLineType),
     /// 筆劃行
@@ -20,13 +20,13 @@ pub enum Line<'a> {
 }
 
 impl<'a> Line<'a> {
-    pub fn new(field_data: &'a str) -> Self {
+    pub fn new(line_data: &'a str) -> Self {
         #[derive(Clone, Copy)]
         enum FieldType<'a> {
             Num(f64),
             Str(&'a str),
         }
-        let mut fields = field_data
+        let mut fields = line_data
             // I think this implementation is very naïve, but this is
             // what the initial JavaScript version does.
             .split(':')

@@ -1,6 +1,12 @@
 use crate::{two_d, utils::Point};
 
-fn stretch_numeric(dest_pivot: f64, src_pivot: f64, origin_point: f64, min: f64, max: f64) -> f64 {
+pub(crate) fn stretch_numeric(
+    dest_pivot: f64,
+    src_pivot: f64,
+    origin_point: f64,
+    min: f64,
+    max: f64,
+) -> f64 {
     let (p1, p2, p3, p4) = if origin_point < src_pivot + 100.0 {
         (min, src_pivot + 100.0, min, dest_pivot + 100.0)
     } else {
@@ -10,7 +16,7 @@ fn stretch_numeric(dest_pivot: f64, src_pivot: f64, origin_point: f64, min: f64,
     ((origin_point - p1) / (p2 - p1) * (p4 - p3) + p3).floor()
 }
 
-fn stretch<P1, P2, P3, P4, P5>(
+pub(crate) fn stretch<P1, P2, P3, P4, P5>(
     dest_pivot: P1,
     src_pivot: P2,
     origin_point: P3,
@@ -200,9 +206,9 @@ impl EndType {
 }
 
 #[derive(Debug, PartialEq)]
-struct Bounds {
-    min_point: Point,
-    max_point: Point,
+pub(crate) struct Bounds {
+    pub(crate) min_point: Point,
+    pub(crate) max_point: Point,
 }
 
 // https://glyphwiki.org/wiki/GlyphWiki:KAGE%E3%83%87%E3%83%BC%E3%82%BF%E4%BB%95%E6%A7%98#i3
@@ -293,7 +299,7 @@ impl StrokeLineType {
             .any(|(p1, p2)| two_d::is_cross_box(p1, p2, box_diag_1, box_diag_2))
     }
 
-    fn stretch<P1, P2, P3, P4>(
+    pub(crate) fn stretch<P1, P2, P3, P4>(
         &mut self,
         dest_pivot: P1,
         src_pivot: P2,
@@ -312,7 +318,7 @@ impl StrokeLineType {
         self.point_4 = stretch(dest_pivot, src_pivot, self.point_4, min_point, max_point);
     }
 
-    fn get_box(&self) -> Bounds {
+    pub(crate) fn get_box(&self) -> Bounds {
         let mut min_point = Point::INFINITY;
         let mut max_point = Point::NEG_INFINITY;
 

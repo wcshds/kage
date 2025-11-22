@@ -7,9 +7,8 @@ use crate::{
     },
     font::stroke_adjustment::AdjustedStroke,
     line::{
-        Line,
         special_line::{SpecialLineType, TransformType},
-        stroke_line::{EndKind, EndType, StrokeKind},
+        stroke_line::{EndKind, EndType, StrokeKind, StrokeLineType},
     },
     pen::Pen,
     polygon::Polygon,
@@ -22,31 +21,33 @@ pub struct Ming {
     pub k_rate: usize,
     /// Half of the width of mincho-style horizontal (thinner) strokes.
     /// origin name: kMinWidthY
-    pub k_min_width_horizontal: f64,
+    pub min_width_horizontal: f64,
     /// Determines the size of ウロコ at the 開放 end of mincho-style horizontal strokes.
     /// origin name: kMinWidthU
-    pub k_min_width_triangle: f64,
+    pub min_width_triangle: f64,
     /// Half of the width of mincho-style vertical (thicker) strokes.
     /// origin name: kMinWidthT
-    pub k_min_width_vertical: f64,
+    pub min_width_vertical: f64,
     /// Half of the width of gothic-style strokes.
     /// Also used to determine the size of mincho's ornamental elements.
-    pub k_width: f64,
+    pub width: f64,
     /// Size of kakato in gothic.
-    pub k_square_terminal: f64,
+    pub square_terminal: f64,
     /// Width at the end of 右払い relative to `2 * kMinWidthT`.
-    pub k_l2rdfatten: f64,
+    pub right_sweep_end_scale_factor: f64,
     /// Size of the curve at the end of 左ハネ, and at the middle of 折れ and 乙線 strokes.
-    pub k_mage: f64,
+    pub curve_size: f64,
     /// Whether to use off-curve points to approximate curving strokes
     /// with quadratic Bézier curves (experimental).
-    pub k_use_curve: bool,
+    pub use_curve: bool,
     /// Length of 左下カド's カカト in mincho for each shortening level (0 to 3) and 413 (左下zh用新).
     /// for KAKATO adjustment 000,100,200,300,400
-    pub k_adjust_kakato_l: Vec<f64>,
+    /// origin name: k_adjust_kakato_l
+    pub adjust_foot_left: Vec<f64>,
     /// Length of 右下カド's カカト in mincho for each shortening level (0 to 3).
     /// for KAKATO adjustment 000,100,200,300
-    pub k_adjust_kakato_r: Vec<f64>,
+    /// origin name: k_adjust_kakato_r
+    pub adjust_foot_right: Vec<f64>,
     /// Width of the collision box below カカト for shortening adjustment.
     /// check area width
     pub k_adjust_kakato_range_x: f64,
@@ -97,7 +98,7 @@ impl Ming {
     ) {
         let is_quadratic = is_quadratic(control_point_1, control_point_2);
 
-        if is_quadratic && self.k_use_curve {
+        if is_quadratic && self.use_curve {
             let thinness_ratio = 0.5;
             let width_delta_func = |progress: f64| -> f64 {
                 match (&head_shape.kind, &tail_shape.kind) {
@@ -212,7 +213,7 @@ impl Ming {
             let width_delta_func = |progress: f64| -> f64 {
                 match (&head_shape.kind, &tail_shape.kind) {
                     (&EndKind::Narrow | &EndKind::RoofedNarrowEntry, &EndKind::Free) => {
-                        progress.powf(thinness_ratio) * self.k_l2rdfatten
+                        progress.powf(thinness_ratio) * self.right_sweep_end_scale_factor
                     }
                     (&EndKind::Narrow | &EndKind::RoofedNarrowEntry, _) => {
                         if is_quadratic {
@@ -226,9 +227,9 @@ impl Ming {
                         && (start_width_reduction > 0.0 || width_change_rate > 0.0) =>
                     {
                         // ???
-                        ((self.k_min_width_vertical - start_width_reduction / 2.0)
+                        ((self.min_width_vertical - start_width_reduction / 2.0)
                             - (width_change_rate - start_width_reduction) / 2.0 * progress)
-                            / self.k_min_width_vertical
+                            / self.min_width_vertical
                     }
                     _ => 1.0,
                 }
@@ -366,13 +367,13 @@ impl Ming {
                         (min_width_vertical, 0.0),
                         (
                             -plus_minus * min_width_vertical,
-                            -self.k_min_width_horizontal * shape_factor.abs(),
+                            -self.min_width_horizontal * shape_factor.abs(),
                         ),
                     ]);
                     polygons.push(polygon_1);
 
                     let move_offset = if shape_factor < 0.0 {
-                        -shape_factor * self.k_min_width_horizontal
+                        -shape_factor * self.min_width_horizontal
                     } else {
                         0.0
                     };
@@ -383,11 +384,11 @@ impl Ming {
                             (min_width_vertical, -move_offset),
                             (
                                 min_width_vertical * 1.5,
-                                self.k_min_width_horizontal - move_offset,
+                                self.min_width_horizontal - move_offset,
                             ),
                             (
                                 min_width_vertical - 2.0,
-                                self.k_min_width_horizontal * 2.0 + 1.0,
+                                self.min_width_horizontal * 2.0 + 1.0,
                             ),
                         ]
                     } else {
@@ -395,11 +396,11 @@ impl Ming {
                             (min_width_vertical, -move_offset),
                             (
                                 min_width_vertical * 1.5,
-                                self.k_min_width_horizontal - move_offset * 1.2,
+                                self.min_width_horizontal - move_offset * 1.2,
                             ),
                             (
                                 min_width_vertical - 2.0,
-                                self.k_min_width_horizontal * 2.0 - move_offset * 0.8 + 1.0,
+                                self.min_width_horizontal * 2.0 - move_offset * 0.8 + 1.0,
                             ),
                         ]
                     });
@@ -416,14 +417,14 @@ impl Ming {
                     let polygon_1 = pen.get_polygon(&[
                         (0.0, min_width_vertical),
                         (0.0, -min_width_vertical),
-                        (-self.k_min_width_horizontal, -min_width_vertical),
+                        (-self.min_width_horizontal, -min_width_vertical),
                     ]);
                     polygons.push(polygon_1);
 
                     let polygon_2 = pen.get_polygon(&[
                         (0.0, min_width_vertical),
-                        (self.k_min_width_horizontal, min_width_vertical * 1.5),
-                        (self.k_min_width_horizontal * 3.0, min_width_vertical * 0.5),
+                        (self.min_width_horizontal, min_width_vertical * 1.5),
+                        (self.min_width_horizontal * 3.0, min_width_vertical * 0.5),
                     ]);
                     polygons.push(polygon_2);
                 }
@@ -431,12 +432,9 @@ impl Ming {
             &EndKind::TopRightCorner => {
                 let pen = Pen::new(start_point.x - corner_offset, start_point.y);
                 let polygon = pen.get_polygon(&[
-                    (-min_width_vertical, -self.k_min_width_horizontal),
-                    (0.0, -self.k_min_width_horizontal - self.k_width),
-                    (
-                        min_width_vertical + self.k_width,
-                        self.k_min_width_horizontal,
-                    ),
+                    (-min_width_vertical, -self.min_width_horizontal),
+                    (0.0, -self.min_width_horizontal - self.width),
+                    (min_width_vertical + self.width, self.min_width_horizontal),
                     (min_width_vertical, min_width_vertical - 1.0),
                     (-min_width_vertical, min_width_vertical + 4.0),
                 ]);
@@ -446,12 +444,9 @@ impl Ming {
             &EndKind::RoofedNarrowEntry => {
                 let pen = Pen::new(start_point.x - corner_offset, start_point.y);
                 let polygon = pen.get_polygon(&[
-                    (-min_width_vertical, -self.k_min_width_horizontal),
-                    (0.0, -self.k_min_width_horizontal - self.k_width),
-                    (
-                        min_width_vertical + self.k_width,
-                        self.k_min_width_horizontal,
-                    ),
+                    (-min_width_vertical, -self.min_width_horizontal),
+                    (0.0, -self.min_width_horizontal - self.width),
+                    (min_width_vertical + self.width, self.min_width_horizontal),
                     (min_width_vertical, min_width_vertical - 1.0),
                     (0.0, min_width_vertical + 2.0),
                     (0.0, 0.0),
@@ -477,8 +472,7 @@ impl Ming {
     ) {
         match [&head_shape.kind, &tail_shape.kind] {
             [_, &EndKind::Temp1 | &EndKind::Stop | &EndKind::Temp15] => {
-                let min_width_vertical_new =
-                    self.k_min_width_vertical - tail_circle_adjustment / 2.0;
+                let min_width_vertical_new = self.min_width_vertical - tail_circle_adjustment / 2.0;
 
                 let mut pen = Pen::new(end_point.x, end_point.y);
                 if control_point_2.x == end_point.x {
@@ -487,7 +481,7 @@ impl Ming {
                     pen.set_left(control_point_2.x, control_point_2.y);
                 }
 
-                let local_points = if self.k_use_curve {
+                let local_points = if self.use_curve {
                     [
                         (0.0, -min_width_vertical_new, false),
                         (
@@ -538,8 +532,8 @@ impl Ming {
 
                     let polygon = pen.get_polygon(&[
                         (0.0, -min_width_vertical + 1.0).into(),
-                        (2.0, -min_width_vertical - self.k_width * 5.0),
-                        (0.0, -min_width_vertical - self.k_width * 5.0),
+                        (2.0, -min_width_vertical - self.width * 5.0),
+                        (0.0, -min_width_vertical - self.width * 5.0),
                         (-min_width_vertical, -min_width_vertical + 1.0),
                     ]);
 
@@ -579,11 +573,11 @@ impl Ming {
                 }
 
                 let polygon = pen.get_polygon(&[
-                    (0.0, min_width_vertical * self.k_l2rdfatten),
-                    (0.0, -min_width_vertical * self.k_l2rdfatten),
+                    (0.0, min_width_vertical * self.right_sweep_end_scale_factor),
+                    (0.0, -min_width_vertical * self.right_sweep_end_scale_factor),
                     (
-                        shape_factor.abs() * min_width_vertical * self.k_l2rdfatten,
-                        plus_minus * min_width_vertical * self.k_l2rdfatten,
+                        shape_factor.abs() * min_width_vertical * self.right_sweep_end_scale_factor,
+                        plus_minus * min_width_vertical * self.right_sweep_end_scale_factor,
                     ),
                 ]);
                 polygons.push(polygon);
@@ -604,11 +598,11 @@ impl Ming {
                 } else {
                     1.0
                 };
-                let hane_length = self.k_width
+                let hane_length = self.width
                     * 4.0
                     * f64::min(
                         1.0 - hane_adjustment / 10.0,
-                        (min_width_vertical / self.k_min_width_vertical).powi(3),
+                        (min_width_vertical / self.min_width_vertical).powi(3),
                     )
                     * jump_factor;
                 let pen = Pen::new(end_point.x, end_point.y);
@@ -638,13 +632,13 @@ impl Ming {
         start_thickness_adjustment: f64,
         end_thickness_adjustment: f64,
     ) {
-        let min_width_vertical = self.k_min_width_vertical - vertical_thickness_adjustment / 2.0;
+        let min_width_vertical = self.min_width_vertical - vertical_thickness_adjustment / 2.0;
 
         let mut start_point = start_point;
         let mut delta_1 = None;
         match &head_shape.kind {
             &EndKind::Free | &EndKind::Narrow | &EndKind::RoofedNarrowEntry => {
-                delta_1 = Some(-1.0 * self.k_min_width_horizontal * 0.5);
+                delta_1 = Some(-1.0 * self.min_width_horizontal * 0.5);
             }
             &EndKind::Temp1
             | &EndKind::HorizontalConnection
@@ -654,7 +648,7 @@ impl Ming {
                 delta_1 = Some(0.0);
             }
             &EndKind::TopLeftCorner => {
-                delta_1 = Some(self.k_min_width_horizontal);
+                delta_1 = Some(self.min_width_horizontal);
             }
             _ => {}
         }
@@ -848,7 +842,7 @@ impl Ming {
         foot_adjustment: usize,
     ) {
         // TODO: adjust kakato_adjustment if a1 = 1 and a3 in [13, 23]; otherwise equals to a3_opt
-        let min_width_vertical = self.k_min_width_vertical - vertical_adjustment / 2.0;
+        let min_width_vertical = self.min_width_vertical - vertical_adjustment / 2.0;
 
         if start_point.x == end_point.x
             || start_point.y != end_point.y
@@ -878,7 +872,7 @@ impl Ming {
                             0,
                             pen_1.get_point(
                                 min_width_vertical,
-                                self.k_min_width_horizontal / 2.0,
+                                self.min_width_horizontal / 2.0,
                                 false,
                             ),
                         )
@@ -888,7 +882,7 @@ impl Ming {
                             3,
                             pen_1.get_point(
                                 -min_width_vertical,
-                                -self.k_min_width_horizontal / 2.0,
+                                -self.min_width_horizontal / 2.0,
                                 false,
                             ),
                         )
@@ -906,11 +900,7 @@ impl Ming {
                     polygon
                         .set_point(
                             0,
-                            pen_1.get_point(
-                                min_width_vertical,
-                                -self.k_min_width_horizontal,
-                                false,
-                            ),
+                            pen_1.get_point(min_width_vertical, -self.min_width_horizontal, false),
                         )
                         .expect("The length of polygon is equal to 4.");
                     polygon
@@ -918,7 +908,7 @@ impl Ming {
                             3,
                             pen_1.get_point(
                                 -min_width_vertical,
-                                -self.k_min_width_horizontal - min_width_vertical,
+                                -self.min_width_horizontal - min_width_vertical,
                                 false,
                             ),
                         )
@@ -972,7 +962,7 @@ impl Ming {
                             .set(
                                 0,
                                 start_point.x + min_width_vertical,
-                                start_point.y - self.k_min_width_horizontal,
+                                start_point.y - self.min_width_horizontal,
                                 Some(false),
                             )
                             .expect("The length of polygon is equal to 4.");
@@ -980,7 +970,7 @@ impl Ming {
                             .set(
                                 3,
                                 start_point.x - min_width_vertical,
-                                start_point.y - self.k_min_width_horizontal,
+                                start_point.y - self.min_width_horizontal,
                                 Some(false),
                             )
                             .expect("The length of polygon is equal to 4.");
@@ -1055,7 +1045,7 @@ impl Ming {
                             1,
                             pen_2.get_point(
                                 min_width_vertical,
-                                self.k_adjust_kakato_l[foot_adjustment],
+                                self.adjust_foot_left[foot_adjustment],
                                 false,
                             ),
                         )
@@ -1065,7 +1055,7 @@ impl Ming {
                             2,
                             pen_2.get_point(
                                 -min_width_vertical,
-                                self.k_adjust_kakato_l[foot_adjustment] + min_width_vertical,
+                                self.adjust_foot_left[foot_adjustment] + min_width_vertical,
                                 false,
                             ),
                         )
@@ -1077,7 +1067,7 @@ impl Ming {
                             1,
                             pen_2.get_point(
                                 min_width_vertical,
-                                self.k_adjust_kakato_r[foot_adjustment],
+                                self.adjust_foot_right[foot_adjustment],
                                 false,
                             ),
                         )
@@ -1087,7 +1077,7 @@ impl Ming {
                             2,
                             pen_2.get_point(
                                 -min_width_vertical,
-                                self.k_adjust_kakato_r[foot_adjustment] + min_width_vertical,
+                                self.adjust_foot_right[foot_adjustment] + min_width_vertical,
                                 false,
                             ),
                         )
@@ -1099,7 +1089,7 @@ impl Ming {
                             .set(
                                 1,
                                 end_point.x + min_width_vertical,
-                                end_point.y + self.k_min_width_horizontal,
+                                end_point.y + self.min_width_horizontal,
                                 Some(false),
                             )
                             .expect("The length of polygon is equal to 4.");
@@ -1107,7 +1097,7 @@ impl Ming {
                             .set(
                                 2,
                                 end_point.x - min_width_vertical,
-                                end_point.y + self.k_min_width_horizontal,
+                                end_point.y + self.min_width_horizontal,
                                 Some(false),
                             )
                             .expect("The length of polygon is equal to 4.");
@@ -1139,26 +1129,18 @@ impl Ming {
                 &EndKind::BottomRightHorT => {
                     let pen = Pen::new(end_point.x, end_point.y);
                     let polygon = pen.get_polygon(&[
-                        (0.0, self.k_min_width_horizontal, false),
+                        (0.0, self.min_width_horizontal, false),
                         if start_point.x == end_point.x {
-                            (
-                                min_width_vertical,
-                                -self.k_min_width_horizontal * 3.0,
-                                false,
-                            )
+                            (min_width_vertical, -self.min_width_horizontal * 3.0, false)
                         } else {
                             (
                                 min_width_vertical * 0.5,
-                                -self.k_min_width_horizontal * 4.0,
+                                -self.min_width_horizontal * 4.0,
                                 false,
                             )
                         },
-                        (
-                            min_width_vertical * 2.0,
-                            -self.k_min_width_horizontal,
-                            false,
-                        ),
-                        (min_width_vertical * 2.0, self.k_min_width_horizontal, false),
+                        (min_width_vertical * 2.0, -self.min_width_horizontal, false),
+                        (min_width_vertical * 2.0, self.min_width_horizontal, false),
                     ]);
                     polygons.push(polygon);
                 }
@@ -1166,13 +1148,10 @@ impl Ming {
                     if start_point.x == end_point.x {
                         let pen = Pen::new(end_point.x, end_point.y);
                         let polygon = pen.get_polygon(&[
-                            (-min_width_vertical, -self.k_min_width_horizontal * 3.0),
+                            (-min_width_vertical, -self.min_width_horizontal * 3.0),
                             (-min_width_vertical * 2.0, 0.0),
-                            (
-                                -self.k_min_width_horizontal,
-                                self.k_min_width_horizontal * 5.0,
-                            ),
-                            (min_width_vertical, self.k_min_width_horizontal),
+                            (-self.min_width_horizontal, self.min_width_horizontal * 5.0),
+                            (min_width_vertical, self.min_width_horizontal),
                         ]);
                         polygons.push(polygon);
                     } else {
@@ -1186,13 +1165,10 @@ impl Ming {
 
                         let pen = Pen::new(end_point.x + offset, end_point.y);
                         let polygon = pen.get_polygon(&[
-                            (0.0, -self.k_min_width_horizontal * 5.0),
+                            (0.0, -self.min_width_horizontal * 5.0),
                             (-min_width_vertical * 2.0, 0.0),
-                            (
-                                -self.k_min_width_horizontal,
-                                self.k_min_width_horizontal * 5.0,
-                            ),
-                            (min_width_vertical, self.k_min_width_horizontal),
+                            (-self.min_width_horizontal, self.min_width_horizontal * 5.0),
+                            (min_width_vertical, self.min_width_horizontal),
                             (0.0, 0.0),
                         ]);
                         polygons.push(polygon);
@@ -1207,11 +1183,11 @@ impl Ming {
                     let pen = Pen::new(start_point.x, start_point.y);
 
                     let mut local_points = Vec::with_capacity(5);
-                    local_points.push((-min_width_vertical, -self.k_min_width_horizontal, false));
-                    local_points.push((0.0, -self.k_min_width_horizontal - self.k_width, false));
+                    local_points.push((-min_width_vertical, -self.min_width_horizontal, false));
+                    local_points.push((0.0, -self.min_width_horizontal - self.width, false));
                     local_points.push((
-                        min_width_vertical + self.k_width,
-                        self.k_min_width_horizontal,
+                        min_width_vertical + self.width,
+                        self.min_width_horizontal,
                         false,
                     ));
 
@@ -1231,11 +1207,11 @@ impl Ming {
                     let pen = Pen::new(start_point.x, start_point.y);
 
                     let mut local_points = Vec::with_capacity(6);
-                    local_points.push((-min_width_vertical, -self.k_min_width_horizontal, false));
-                    local_points.push((0.0, -self.k_min_width_horizontal - self.k_width, false));
+                    local_points.push((-min_width_vertical, -self.min_width_horizontal, false));
+                    local_points.push((0.0, -self.min_width_horizontal - self.width, false));
                     local_points.push((
-                        min_width_vertical + self.k_width,
-                        self.k_min_width_horizontal,
+                        min_width_vertical + self.width,
+                        self.min_width_horizontal,
                         false,
                     ));
 
@@ -1253,26 +1229,26 @@ impl Ming {
                 }
                 &EndKind::Free => {
                     let polygon = pen_1.get_polygon(&[
-                        (min_width_vertical, self.k_min_width_horizontal * 0.5, false),
+                        (min_width_vertical, self.min_width_horizontal * 0.5, false),
                         (
                             min_width_vertical * 1.5,
-                            self.k_min_width_horizontal * 1.5,
+                            self.min_width_horizontal * 1.5,
                             false,
                         ),
                         if start_point.x != end_point.x {
                             (
                                 start_point.x
-                                    + (self.k_min_width_vertical - 2.0) * sin_radian
-                                    + (self.k_min_width_horizontal * 2.5) * cos_radian,
+                                    + (self.min_width_vertical - 2.0) * sin_radian
+                                    + (self.min_width_horizontal * 2.5) * cos_radian,
                                 start_point.y
-                                    + (self.k_min_width_vertical + 1.0) * (-cos_radian)
-                                    + (self.k_min_width_horizontal * 2.5) * sin_radian,
+                                    + (self.min_width_vertical + 1.0) * (-cos_radian)
+                                    + (self.min_width_horizontal * 2.5) * sin_radian,
                                 false,
                             )
                         } else {
                             (
                                 min_width_vertical - 2.0,
-                                self.k_min_width_horizontal * 2.5 + 1.0,
+                                self.min_width_horizontal * 2.5 + 1.0,
                                 false,
                             )
                         },
@@ -1289,7 +1265,7 @@ impl Ming {
                             && matches!(&tail_shape.kind, &EndKind::RightUpwardFlick))))
             {
                 let mut polygon = Polygon::new_empty();
-                if self.k_use_curve {
+                if self.use_curve {
                     polygon.push_point(pen_2.get_point(min_width_vertical, 0.0, false));
                     polygon.push(
                         end_point.x - cos_radian * min_width_vertical * 0.9
@@ -1343,7 +1319,7 @@ impl Ming {
                         && matches!(&head_shape.kind, &EndKind::Temp6)
                         && matches!(&tail_shape.kind, &EndKind::RightUpwardFlick)
                     {
-                        let hane_length = self.k_width * 5.0;
+                        let hane_length = self.width * 5.0;
                         let rv = if start_point.x < end_point.x {
                             1.0
                         } else {
@@ -1378,7 +1354,7 @@ impl Ming {
                     }
 
                     let r = 0.6;
-                    let local_points = if self.k_use_curve {
+                    let local_points = if self.use_curve {
                         vec![
                             (0.0, -min_width_vertical, false),
                             (min_width_vertical * 0.9, -min_width_vertical * 0.9, true),
@@ -1402,7 +1378,7 @@ impl Ming {
                     polygons.push(polygon);
 
                     if matches!(&tail_shape.kind, &EndKind::RightUpwardFlick) {
-                        let hane_length = self.k_width
+                        let hane_length = self.width
                             * (4.0 * (1.0 - vertical_adjustment / self.k_adjust_mage_step) + 1.0);
                         let rv = if start_point.x < end_point.x {
                             1.0
@@ -1434,10 +1410,10 @@ impl Ming {
             pen_2.set_matrix2(cos_radian, sin_radian);
 
             let polygon = Polygon::new(vec![
-                pen_1.get_point(0.0, -self.k_min_width_horizontal, false),
-                pen_2.get_point(0.0, -self.k_min_width_horizontal, false),
-                pen_2.get_point(0.0, self.k_min_width_horizontal, false),
-                pen_1.get_point(0.0, self.k_min_width_horizontal, false),
+                pen_1.get_point(0.0, -self.min_width_horizontal, false),
+                pen_2.get_point(0.0, -self.min_width_horizontal, false),
+                pen_2.get_point(0.0, self.min_width_horizontal, false),
+                pen_1.get_point(0.0, self.min_width_horizontal, false),
             ]);
             polygons.push(polygon);
 
@@ -1445,9 +1421,9 @@ impl Ming {
                 // triangle terminal
                 &EndKind::Free => {
                     let triangle_scale =
-                        (self.k_min_width_triangle / self.k_min_width_horizontal - 1.0) / 4.0 + 1.0;
+                        (self.min_width_triangle / self.min_width_horizontal - 1.0) / 4.0 + 1.0;
                     let mut polygon_2 = pen_2.get_polygon(&[
-                        (0.0, -self.k_min_width_horizontal, false),
+                        (0.0, -self.min_width_horizontal, false),
                         (
                             -self.k_adjust_uroko_x[triangle_adjustment] * triangle_scale,
                             0.0,
@@ -1501,7 +1477,7 @@ impl Ming {
             .collect()
     }
 
-    fn df_transform(polygons: &mut Polygons, line_type: SpecialLineType) {
+    pub(crate) fn df_transform(&self, polygons: &mut Polygons, line_type: SpecialLineType) {
         let polygon_vec =
             Ming::select_polygons_rect(polygons, line_type.box_diag_1, line_type.box_diag_2);
 
@@ -1551,412 +1527,372 @@ impl Ming {
     pub fn df_draw_font(
         &self,
         polygons: &mut Polygons,
-        line: Line,
+        stroke_line: StrokeLineType,
         stroke_adjustment: AdjustedStroke,
     ) {
-        match line {
-            Line::SpecialLine(special_line_type) => {
-                Ming::df_transform(polygons, special_line_type);
-            }
-            Line::StrokeLine(stroke_line_type) => {
-                match stroke_line_type.stroke_type.kind {
-                    StrokeKind::StraightLine => {
-                        if let EndKind::LeftUpwardFlick = stroke_line_type.tail_shape.kind {
-                            let delta_vector = if stroke_line_type.point_1.x
-                                == stroke_line_type.point_2.x
-                                && stroke_line_type.point_1.y == stroke_line_type.point_2.y
-                            {
-                                (0.0, self.k_mage).into()
-                            } else {
-                                normalize(
-                                    stroke_line_type.point_1 - stroke_line_type.point_2,
-                                    self.k_mage,
-                                )
-                            };
-                            let joint_point = stroke_line_type.point_2 + delta_vector;
-                            self.cd_draw_line(
-                                polygons,
-                                stroke_line_type.point_1,
-                                joint_point,
-                                stroke_line_type.head_shape,
-                                EndType::new(1.0),
-                                stroke_adjustment.vertical_adjustment,
-                                0,
-                                0,
-                            );
-                            self.cd_draw_quadratic_bezier(
-                                polygons,
-                                joint_point,
-                                stroke_line_type.point_2,
-                                (
-                                    stroke_line_type.point_2.x
-                                        - self.k_mage
-                                            * (((self.k_adjust_tate_step + 4.0)
-                                                - stroke_adjustment.vertical_adjustment)
-                                                / (self.k_adjust_tate_step + 4.0)),
-                                    stroke_line_type.point_2.y,
-                                )
-                                    .into(),
-                                EndType::new(1.0),
-                                EndType::new(14.0),
-                                stroke_adjustment.vertical_adjustment % 10.0,
-                                stroke_adjustment.flick_adjustment,
-                                (stroke_adjustment.vertical_adjustment / 10.0).floor(),
-                                stroke_line_type.tail_shape.opt_2 as f64,
-                            );
-                        } else {
-                            self.cd_draw_line(
-                                polygons,
-                                stroke_line_type.point_1,
-                                stroke_line_type.point_2,
-                                stroke_line_type.head_shape,
-                                stroke_line_type.tail_shape,
-                                stroke_adjustment.vertical_adjustment,
-                                stroke_adjustment.triangle_adjustment,
-                                stroke_adjustment.foot_adjustment,
-                            );
-                        }
-                    }
-                    StrokeKind::Curve => {
-                        // There is no 12 for the first column in glyphwiki data, so we only need to keep the logic of `case 2`.
-                        // TODO: slash_adjustment is too coupled, it is only used in `a2 === 132`
-                        if let EndKind::LeftUpwardFlick = stroke_line_type.tail_shape.kind {
-                            let delta_vector =
-                                if stroke_line_type.point_2.x == stroke_line_type.point_3.x {
-                                    (0.0, -self.k_mage).into()
-                                } else if stroke_line_type.point_2.y == stroke_line_type.point_3.y {
-                                    (-self.k_mage, 0.0).into()
-                                } else {
-                                    normalize(
-                                        stroke_line_type.point_2 - stroke_line_type.point_3,
-                                        self.k_mage,
-                                    )
-                                };
-                            let joint_point = stroke_line_type.point_3 + delta_vector;
-
-                            self.cd_draw_quadratic_bezier(
-                                polygons,
-                                stroke_line_type.point_1,
-                                stroke_line_type.point_2,
-                                joint_point,
-                                EndType::new(
-                                    stroke_line_type.head_shape.base as f64
-                                        + stroke_adjustment.slash_adjustment * 100.0,
-                                ),
-                                EndType::new(0.0),
-                                stroke_line_type.head_shape.opt_2 as f64,
-                                0.0,
-                                stroke_line_type.head_shape.opt_3 as f64,
-                                0.0,
-                            );
-                            self.cd_draw_quadratic_bezier(
-                                polygons,
-                                joint_point,
-                                stroke_line_type.point_3,
-                                (
-                                    stroke_line_type.point_3.x - self.k_mage,
-                                    stroke_line_type.point_3.y,
-                                    false,
-                                )
-                                    .into(),
-                                EndType::new(2.0),
-                                EndType::new(14.0),
-                                stroke_line_type.head_shape.opt_2 as f64,
-                                stroke_adjustment.flick_adjustment,
-                                0.0,
-                                stroke_line_type.tail_shape.opt_2 as f64,
-                            );
-                        } else {
-                            let new_tail_shape = if let EndKind::RightUpwardFlick =
-                                stroke_line_type.tail_shape.kind
-                            {
-                                EndType::new(15.0)
-                            } else {
-                                stroke_line_type.tail_shape
-                            };
-
-                            self.cd_draw_quadratic_bezier(
-                                polygons,
-                                stroke_line_type.point_1,
-                                stroke_line_type.point_2,
-                                stroke_line_type.point_3,
-                                EndType::new(
-                                    stroke_line_type.head_shape.base as f64
-                                        + stroke_adjustment.slash_adjustment * 100.0,
-                                ),
-                                new_tail_shape,
-                                stroke_line_type.head_shape.opt_2 as f64,
-                                stroke_line_type.tail_shape.opt_1 as f64,
-                                stroke_line_type.head_shape.opt_3 as f64,
-                                stroke_line_type.tail_shape.opt_2 as f64,
-                            );
-                        }
-                    }
-                    StrokeKind::BendLine => {
-                        let delta_vector_1 = if stroke_line_type.point_1.x
-                            == stroke_line_type.point_2.x
-                            && stroke_line_type.point_1.y == stroke_line_type.point_2.y
-                        {
-                            (0.0, self.k_mage).into()
-                        } else {
-                            normalize(
-                                stroke_line_type.point_1 - stroke_line_type.point_2,
-                                self.k_mage,
-                            )
-                        };
-                        let joint_point_1 = stroke_line_type.point_2 + delta_vector_1;
-
-                        let delta_vector_2 = if stroke_line_type.point_2.x
-                            == stroke_line_type.point_3.x
-                            && stroke_line_type.point_2.y == stroke_line_type.point_3.y
-                        {
-                            (0.0, -self.k_mage).into()
-                        } else {
-                            normalize(
-                                stroke_line_type.point_3 - stroke_line_type.point_2,
-                                self.k_mage,
-                            )
-                        };
-                        let joint_point_2 = stroke_line_type.point_2 + delta_vector_2;
-
-                        self.cd_draw_line(
-                            polygons,
-                            stroke_line_type.point_1,
-                            joint_point_1,
-                            EndType::new(
-                                stroke_line_type.head_shape.base as f64
-                                    + stroke_line_type.head_shape.opt_1 as f64 * 100.0,
-                            ),
-                            EndType::new(1.0),
-                            stroke_adjustment.vertical_adjustment,
-                            0,
-                            0,
-                        );
-                        self.cd_draw_quadratic_bezier(
-                            polygons,
-                            joint_point_1,
-                            stroke_line_type.point_2,
-                            joint_point_2,
-                            EndType::new(1.0),
-                            EndType::new(1.0),
-                            0.0,
-                            0.0,
-                            stroke_adjustment.vertical_adjustment,
-                            stroke_adjustment.curve_adjustment,
-                        );
-
-                        let should_skip_tail =
-                            matches!(stroke_line_type.tail_shape.kind, EndKind::RightUpwardFlick)
-                                && stroke_line_type.tail_shape.opt_1 == 0
-                                && !((stroke_line_type.point_2.x < stroke_line_type.point_3.x
-                                    && stroke_line_type.point_3.x - joint_point_2.x > 0.0)
-                                    || (stroke_line_type.point_2.x > stroke_line_type.point_3.x
-                                        && joint_point_2.x - stroke_line_type.point_3.x > 0.0));
-
-                        if !should_skip_tail {
-                            // TODO: opt_2 seems unnecessary?
-                            let opt_2 = if matches!(
-                                stroke_line_type.tail_shape.kind,
-                                EndKind::RightUpwardFlick
-                            ) && stroke_line_type.tail_shape.opt_1 == 0
-                            {
-                                0
-                            } else {
-                                (stroke_line_type.tail_shape.opt_1 as f64
-                                    + stroke_adjustment.curve_adjustment * 10.0)
-                                    as usize
-                            };
-
-                            self.cd_draw_line(
-                                polygons,
-                                joint_point_2,
-                                stroke_line_type.point_3,
-                                EndType::new(6.0),
-                                stroke_line_type.tail_shape,
-                                stroke_adjustment.curve_adjustment,
-                                opt_2,
-                                opt_2,
-                            );
-                        }
-                    }
-                    StrokeKind::OtsuCurve => {
-                        let scale_factor =
-                            (Vector::from(stroke_line_type.point_3 - stroke_line_type.point_2)
-                                .hypot()
-                                / 120.0
-                                * 6.0)
-                                .min(6.0);
-
-                        let delta_vector_1 = if stroke_line_type.point_1.x
-                            == stroke_line_type.point_2.x
-                            && stroke_line_type.point_1.y == stroke_line_type.point_2.y
-                        {
-                            (0.0, self.k_mage * scale_factor).into()
-                        } else {
-                            normalize(
-                                stroke_line_type.point_1 - stroke_line_type.point_2,
-                                self.k_mage * scale_factor,
-                            )
-                        };
-                        let joint_point_1 = stroke_line_type.point_2 + delta_vector_1;
-
-                        let delta_vector_2 = if stroke_line_type.point_2.x
-                            == stroke_line_type.point_3.x
-                            && stroke_line_type.point_2.y == stroke_line_type.point_3.y
-                        {
-                            (0.0, -self.k_mage * scale_factor).into()
-                        } else {
-                            normalize(
-                                stroke_line_type.point_3 - stroke_line_type.point_2,
-                                self.k_mage * scale_factor,
-                            )
-                        };
-                        let joint_point_2 = stroke_line_type.point_2 + delta_vector_2;
-
-                        self.cd_draw_line(
-                            polygons,
-                            stroke_line_type.point_1,
-                            joint_point_1,
-                            EndType::new(
-                                stroke_line_type.head_shape.base as f64
-                                    + stroke_line_type.head_shape.opt_1 as f64 * 100.0,
-                            ),
-                            EndType::new(1.0),
-                            (stroke_line_type.head_shape.opt_2
-                                + stroke_line_type.head_shape.opt_3 * 10)
-                                as f64,
-                            0,
-                            0,
-                        );
-                        self.cd_draw_quadratic_bezier(
-                            polygons,
-                            joint_point_1,
-                            stroke_line_type.point_2,
-                            joint_point_2,
-                            EndType::new(1.0),
-                            EndType::new(1.0),
-                            0.0,
-                            0.0,
-                            0.0,
-                            0.0,
-                        );
-
-                        if !(matches!(stroke_line_type.tail_shape.kind, EndKind::RightUpwardFlick)
-                            && stroke_line_type.tail_shape.opt == 0
-                            && stroke_line_type.point_3.x - joint_point_2.x <= 0.0)
-                        {
-                            self.cd_draw_line(
-                                polygons,
-                                joint_point_2,
-                                stroke_line_type.point_3,
-                                EndType::new(6.0),
-                                stroke_line_type.tail_shape,
-                                0.0,
-                                stroke_line_type.tail_shape.opt_1 as usize, // opt or opt_1?
-                                stroke_line_type.tail_shape.opt_1 as usize, // opt or opt_1?
-                            );
-                        }
-                    }
-                    StrokeKind::ComplexCurve => {
-                        if matches!(stroke_line_type.tail_shape.kind, EndKind::LeftUpwardFlick) {
-                            let delta_vector =
-                                if stroke_line_type.point_3.x == stroke_line_type.point_4.x {
-                                    (0.0, -self.k_mage).into()
-                                } else if stroke_line_type.point_3.y == stroke_line_type.point_4.y {
-                                    (-self.k_mage, 0.0).into()
-                                } else {
-                                    normalize(
-                                        stroke_line_type.point_3 - stroke_line_type.point_4,
-                                        self.k_mage,
-                                    )
-                                };
-
-                            let joint_point = stroke_line_type.point_4 + delta_vector;
-                            self.cd_draw_cubic_bezier(
-                                polygons,
-                                stroke_line_type.point_1,
-                                stroke_line_type.point_2,
-                                stroke_line_type.point_3,
-                                joint_point,
-                                stroke_line_type.head_shape,
-                                EndType::new(1.0),
-                                stroke_line_type.head_shape.opt_2 as f64,
-                                0.0,
-                                stroke_line_type.head_shape.opt_3 as f64,
-                                0.0,
-                            );
-                            self.cd_draw_quadratic_bezier(
-                                polygons,
-                                joint_point,
-                                stroke_line_type.point_4,
-                                (
-                                    stroke_line_type.point_4.x - self.k_mage,
-                                    stroke_line_type.point_4.y,
-                                    false,
-                                )
-                                    .into(),
-                                EndType::new(1.0),
-                                EndType::new(14.0),
-                                0.0,
-                                stroke_adjustment.flick_adjustment,
-                                0.0,
-                                stroke_line_type.tail_shape.opt_2 as f64,
-                            );
-                        } else {
-                            let tail_shape = if matches!(
-                                stroke_line_type.tail_shape.kind,
-                                EndKind::RightUpwardFlick
-                            ) && stroke_line_type.tail_shape.opt == 0
-                            {
-                                EndType::new(15.0)
-                            } else {
-                                EndType::new(stroke_line_type.tail_shape.base as f64)
-                            };
-
-                            self.cd_draw_cubic_bezier(
-                                polygons,
-                                stroke_line_type.point_1,
-                                stroke_line_type.point_2,
-                                stroke_line_type.point_3,
-                                stroke_line_type.point_4,
-                                stroke_line_type.head_shape,
-                                tail_shape,
-                                stroke_line_type.head_shape.opt_2 as f64,
-                                stroke_line_type.tail_shape.opt_1 as f64,
-                                stroke_line_type.head_shape.opt_3 as f64,
-                                stroke_line_type.tail_shape.opt_2 as f64,
-                            );
-                        }
-                    }
-                    StrokeKind::VerticalSlash => {
-                        self.cd_draw_line(
-                            polygons,
-                            stroke_line_type.point_1,
-                            stroke_line_type.point_2,
-                            stroke_line_type.head_shape,
-                            EndType::new(1.0),
-                            stroke_adjustment.vertical_adjustment,
-                            0,
-                            0,
-                        );
-                        self.cd_draw_quadratic_bezier(
-                            polygons,
-                            stroke_line_type.point_2,
-                            stroke_line_type.point_3,
-                            stroke_line_type.point_4,
-                            EndType::new(1.0),
-                            EndType::new(stroke_line_type.tail_shape.base as f64),
-                            stroke_adjustment.vertical_adjustment % 10.0,
-                            stroke_line_type.tail_shape.opt_1 as f64,
-                            (stroke_adjustment.vertical_adjustment / 10.0).floor(),
-                            stroke_line_type.tail_shape.opt_2 as f64,
-                        );
-                    }
-                    // This arm should be reinterpretated as `Line::Unknown` in previous steps.
-                    _ => {}
+        match stroke_line.stroke_type.kind {
+            StrokeKind::StraightLine => {
+                if let EndKind::LeftUpwardFlick = stroke_line.tail_shape.kind {
+                    let delta_vector = if stroke_line.point_1.x == stroke_line.point_2.x
+                        && stroke_line.point_1.y == stroke_line.point_2.y
+                    {
+                        (0.0, self.curve_size).into()
+                    } else {
+                        normalize(stroke_line.point_1 - stroke_line.point_2, self.curve_size)
+                    };
+                    let joint_point = stroke_line.point_2 + delta_vector;
+                    self.cd_draw_line(
+                        polygons,
+                        stroke_line.point_1,
+                        joint_point,
+                        stroke_line.head_shape,
+                        EndType::new(1.0),
+                        stroke_adjustment.vertical_adjustment,
+                        0,
+                        0,
+                    );
+                    self.cd_draw_quadratic_bezier(
+                        polygons,
+                        joint_point,
+                        stroke_line.point_2,
+                        (
+                            stroke_line.point_2.x
+                                - self.curve_size
+                                    * (((self.k_adjust_tate_step + 4.0)
+                                        - stroke_adjustment.vertical_adjustment)
+                                        / (self.k_adjust_tate_step + 4.0)),
+                            stroke_line.point_2.y,
+                        )
+                            .into(),
+                        EndType::new(1.0),
+                        EndType::new(14.0),
+                        stroke_adjustment.vertical_adjustment % 10.0,
+                        stroke_adjustment.flick_adjustment,
+                        (stroke_adjustment.vertical_adjustment / 10.0).floor(),
+                        stroke_line.tail_shape.opt_2 as f64,
+                    );
+                } else {
+                    self.cd_draw_line(
+                        polygons,
+                        stroke_line.point_1,
+                        stroke_line.point_2,
+                        stroke_line.head_shape,
+                        stroke_line.tail_shape,
+                        stroke_adjustment.vertical_adjustment,
+                        stroke_adjustment.triangle_adjustment,
+                        stroke_adjustment.foot_adjustment,
+                    );
                 }
             }
-            // Ignore unknown line type.
+            StrokeKind::Curve => {
+                // There is no 12 for the first column in glyphwiki data, so we only need to keep the logic of `case 2`.
+                // TODO: slash_adjustment is too coupled, it is only used in `a2 === 132`
+                if let EndKind::LeftUpwardFlick = stroke_line.tail_shape.kind {
+                    let delta_vector = if stroke_line.point_2.x == stroke_line.point_3.x {
+                        (0.0, -self.curve_size).into()
+                    } else if stroke_line.point_2.y == stroke_line.point_3.y {
+                        (-self.curve_size, 0.0).into()
+                    } else {
+                        normalize(stroke_line.point_2 - stroke_line.point_3, self.curve_size)
+                    };
+                    let joint_point = stroke_line.point_3 + delta_vector;
+
+                    self.cd_draw_quadratic_bezier(
+                        polygons,
+                        stroke_line.point_1,
+                        stroke_line.point_2,
+                        joint_point,
+                        EndType::new(
+                            stroke_line.head_shape.base as f64
+                                + stroke_adjustment.slash_adjustment * 100.0,
+                        ),
+                        EndType::new(0.0),
+                        stroke_line.head_shape.opt_2 as f64,
+                        0.0,
+                        stroke_line.head_shape.opt_3 as f64,
+                        0.0,
+                    );
+                    self.cd_draw_quadratic_bezier(
+                        polygons,
+                        joint_point,
+                        stroke_line.point_3,
+                        (
+                            stroke_line.point_3.x - self.curve_size,
+                            stroke_line.point_3.y,
+                            false,
+                        )
+                            .into(),
+                        EndType::new(2.0),
+                        EndType::new(14.0),
+                        stroke_line.head_shape.opt_2 as f64,
+                        stroke_adjustment.flick_adjustment,
+                        0.0,
+                        stroke_line.tail_shape.opt_2 as f64,
+                    );
+                } else {
+                    let new_tail_shape =
+                        if let EndKind::RightUpwardFlick = stroke_line.tail_shape.kind {
+                            EndType::new(15.0)
+                        } else {
+                            stroke_line.tail_shape
+                        };
+
+                    self.cd_draw_quadratic_bezier(
+                        polygons,
+                        stroke_line.point_1,
+                        stroke_line.point_2,
+                        stroke_line.point_3,
+                        EndType::new(
+                            stroke_line.head_shape.base as f64
+                                + stroke_adjustment.slash_adjustment * 100.0,
+                        ),
+                        new_tail_shape,
+                        stroke_line.head_shape.opt_2 as f64,
+                        stroke_line.tail_shape.opt_1 as f64,
+                        stroke_line.head_shape.opt_3 as f64,
+                        stroke_line.tail_shape.opt_2 as f64,
+                    );
+                }
+            }
+            StrokeKind::BendLine => {
+                let delta_vector_1 = if stroke_line.point_1.x == stroke_line.point_2.x
+                    && stroke_line.point_1.y == stroke_line.point_2.y
+                {
+                    (0.0, self.curve_size).into()
+                } else {
+                    normalize(stroke_line.point_1 - stroke_line.point_2, self.curve_size)
+                };
+                let joint_point_1 = stroke_line.point_2 + delta_vector_1;
+
+                let delta_vector_2 = if stroke_line.point_2.x == stroke_line.point_3.x
+                    && stroke_line.point_2.y == stroke_line.point_3.y
+                {
+                    (0.0, -self.curve_size).into()
+                } else {
+                    normalize(stroke_line.point_3 - stroke_line.point_2, self.curve_size)
+                };
+                let joint_point_2 = stroke_line.point_2 + delta_vector_2;
+
+                self.cd_draw_line(
+                    polygons,
+                    stroke_line.point_1,
+                    joint_point_1,
+                    EndType::new(
+                        stroke_line.head_shape.base as f64
+                            + stroke_line.head_shape.opt_1 as f64 * 100.0,
+                    ),
+                    EndType::new(1.0),
+                    stroke_adjustment.vertical_adjustment,
+                    0,
+                    0,
+                );
+                self.cd_draw_quadratic_bezier(
+                    polygons,
+                    joint_point_1,
+                    stroke_line.point_2,
+                    joint_point_2,
+                    EndType::new(1.0),
+                    EndType::new(1.0),
+                    0.0,
+                    0.0,
+                    stroke_adjustment.vertical_adjustment,
+                    stroke_adjustment.curve_adjustment,
+                );
+
+                let should_skip_tail =
+                    matches!(stroke_line.tail_shape.kind, EndKind::RightUpwardFlick)
+                        && stroke_line.tail_shape.opt_1 == 0
+                        && !((stroke_line.point_2.x < stroke_line.point_3.x
+                            && stroke_line.point_3.x - joint_point_2.x > 0.0)
+                            || (stroke_line.point_2.x > stroke_line.point_3.x
+                                && joint_point_2.x - stroke_line.point_3.x > 0.0));
+
+                if !should_skip_tail {
+                    // TODO: opt_2 seems unnecessary?
+                    let opt_2 = if matches!(stroke_line.tail_shape.kind, EndKind::RightUpwardFlick)
+                        && stroke_line.tail_shape.opt_1 == 0
+                    {
+                        0
+                    } else {
+                        (stroke_line.tail_shape.opt_1 as f64
+                            + stroke_adjustment.curve_adjustment * 10.0)
+                            as usize
+                    };
+
+                    self.cd_draw_line(
+                        polygons,
+                        joint_point_2,
+                        stroke_line.point_3,
+                        EndType::new(6.0),
+                        stroke_line.tail_shape,
+                        stroke_adjustment.curve_adjustment,
+                        opt_2,
+                        opt_2,
+                    );
+                }
+            }
+            StrokeKind::OtsuCurve => {
+                let scale_factor =
+                    (Vector::from(stroke_line.point_3 - stroke_line.point_2).hypot() / 120.0 * 6.0)
+                        .min(6.0);
+
+                let delta_vector_1 = if stroke_line.point_1.x == stroke_line.point_2.x
+                    && stroke_line.point_1.y == stroke_line.point_2.y
+                {
+                    (0.0, self.curve_size * scale_factor).into()
+                } else {
+                    normalize(
+                        stroke_line.point_1 - stroke_line.point_2,
+                        self.curve_size * scale_factor,
+                    )
+                };
+                let joint_point_1 = stroke_line.point_2 + delta_vector_1;
+
+                let delta_vector_2 = if stroke_line.point_2.x == stroke_line.point_3.x
+                    && stroke_line.point_2.y == stroke_line.point_3.y
+                {
+                    (0.0, -self.curve_size * scale_factor).into()
+                } else {
+                    normalize(
+                        stroke_line.point_3 - stroke_line.point_2,
+                        self.curve_size * scale_factor,
+                    )
+                };
+                let joint_point_2 = stroke_line.point_2 + delta_vector_2;
+
+                self.cd_draw_line(
+                    polygons,
+                    stroke_line.point_1,
+                    joint_point_1,
+                    EndType::new(
+                        stroke_line.head_shape.base as f64
+                            + stroke_line.head_shape.opt_1 as f64 * 100.0,
+                    ),
+                    EndType::new(1.0),
+                    (stroke_line.head_shape.opt_2 + stroke_line.head_shape.opt_3 * 10) as f64,
+                    0,
+                    0,
+                );
+                self.cd_draw_quadratic_bezier(
+                    polygons,
+                    joint_point_1,
+                    stroke_line.point_2,
+                    joint_point_2,
+                    EndType::new(1.0),
+                    EndType::new(1.0),
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                );
+
+                if !(matches!(stroke_line.tail_shape.kind, EndKind::RightUpwardFlick)
+                    && stroke_line.tail_shape.opt == 0
+                    && stroke_line.point_3.x - joint_point_2.x <= 0.0)
+                {
+                    self.cd_draw_line(
+                        polygons,
+                        joint_point_2,
+                        stroke_line.point_3,
+                        EndType::new(6.0),
+                        stroke_line.tail_shape,
+                        0.0,
+                        stroke_line.tail_shape.opt_1 as usize, // opt or opt_1?
+                        stroke_line.tail_shape.opt_1 as usize, // opt or opt_1?
+                    );
+                }
+            }
+            StrokeKind::ComplexCurve => {
+                if matches!(stroke_line.tail_shape.kind, EndKind::LeftUpwardFlick) {
+                    let delta_vector = if stroke_line.point_3.x == stroke_line.point_4.x {
+                        (0.0, -self.curve_size).into()
+                    } else if stroke_line.point_3.y == stroke_line.point_4.y {
+                        (-self.curve_size, 0.0).into()
+                    } else {
+                        normalize(stroke_line.point_3 - stroke_line.point_4, self.curve_size)
+                    };
+
+                    let joint_point = stroke_line.point_4 + delta_vector;
+                    self.cd_draw_cubic_bezier(
+                        polygons,
+                        stroke_line.point_1,
+                        stroke_line.point_2,
+                        stroke_line.point_3,
+                        joint_point,
+                        stroke_line.head_shape,
+                        EndType::new(1.0),
+                        stroke_line.head_shape.opt_2 as f64,
+                        0.0,
+                        stroke_line.head_shape.opt_3 as f64,
+                        0.0,
+                    );
+                    self.cd_draw_quadratic_bezier(
+                        polygons,
+                        joint_point,
+                        stroke_line.point_4,
+                        (
+                            stroke_line.point_4.x - self.curve_size,
+                            stroke_line.point_4.y,
+                            false,
+                        )
+                            .into(),
+                        EndType::new(1.0),
+                        EndType::new(14.0),
+                        0.0,
+                        stroke_adjustment.flick_adjustment,
+                        0.0,
+                        stroke_line.tail_shape.opt_2 as f64,
+                    );
+                } else {
+                    let tail_shape =
+                        if matches!(stroke_line.tail_shape.kind, EndKind::RightUpwardFlick)
+                            && stroke_line.tail_shape.opt == 0
+                        {
+                            EndType::new(15.0)
+                        } else {
+                            EndType::new(stroke_line.tail_shape.base as f64)
+                        };
+
+                    self.cd_draw_cubic_bezier(
+                        polygons,
+                        stroke_line.point_1,
+                        stroke_line.point_2,
+                        stroke_line.point_3,
+                        stroke_line.point_4,
+                        stroke_line.head_shape,
+                        tail_shape,
+                        stroke_line.head_shape.opt_2 as f64,
+                        stroke_line.tail_shape.opt_1 as f64,
+                        stroke_line.head_shape.opt_3 as f64,
+                        stroke_line.tail_shape.opt_2 as f64,
+                    );
+                }
+            }
+            StrokeKind::VerticalSlash => {
+                self.cd_draw_line(
+                    polygons,
+                    stroke_line.point_1,
+                    stroke_line.point_2,
+                    stroke_line.head_shape,
+                    EndType::new(1.0),
+                    stroke_adjustment.vertical_adjustment,
+                    0,
+                    0,
+                );
+                self.cd_draw_quadratic_bezier(
+                    polygons,
+                    stroke_line.point_2,
+                    stroke_line.point_3,
+                    stroke_line.point_4,
+                    EndType::new(1.0),
+                    EndType::new(stroke_line.tail_shape.base as f64),
+                    stroke_adjustment.vertical_adjustment % 10.0,
+                    stroke_line.tail_shape.opt_1 as f64,
+                    (stroke_adjustment.vertical_adjustment / 10.0).floor(),
+                    stroke_line.tail_shape.opt_2 as f64,
+                );
+            }
+            // This arm should be reinterpretated as `Line::Unknown` in previous steps.
             _ => {}
         }
     }
@@ -1969,16 +1905,16 @@ mod test {
     fn init(use_curve: bool) -> Ming {
         Ming {
             k_rate: 100,
-            k_min_width_horizontal: 2.0,
-            k_min_width_triangle: 2.0,
-            k_min_width_vertical: 6.0,
-            k_width: 5.0,
-            k_square_terminal: 3.0,
-            k_l2rdfatten: 1.1,
-            k_mage: 10.0,
-            k_use_curve: use_curve,
-            k_adjust_kakato_l: vec![14.0, 9.0, 5.0, 2.0, 0.0],
-            k_adjust_kakato_r: vec![8.0, 6.0, 4.0, 2.0],
+            min_width_horizontal: 2.0,
+            min_width_triangle: 2.0,
+            min_width_vertical: 6.0,
+            width: 5.0,
+            square_terminal: 3.0,
+            right_sweep_end_scale_factor: 1.1,
+            curve_size: 10.0,
+            use_curve,
+            adjust_foot_left: vec![14.0, 9.0, 5.0, 2.0, 0.0],
+            adjust_foot_right: vec![8.0, 6.0, 4.0, 2.0],
             k_adjust_kakato_range_x: 20.0,
             k_adjust_kakato_range_y: vec![1.0, 19.0, 24.0, 30.0],
             k_adjust_kakato_step: 3.0,
@@ -2091,16 +2027,16 @@ mod test {
     fn init_2(use_curve: bool) -> Ming {
         Ming {
             k_rate: 100,
-            k_min_width_horizontal: 16.0,
-            k_min_width_triangle: 18.0,
-            k_min_width_vertical: 20.0,
-            k_width: 4.0,
-            k_square_terminal: 3.0,
-            k_l2rdfatten: 1.1,
-            k_mage: 10.0,
-            k_use_curve: use_curve,
-            k_adjust_kakato_l: vec![0.0, 2.0, 4.0, 6.0, 8.0],
-            k_adjust_kakato_r: vec![0.0, 3.0, 6.0, 9.0, 12.0],
+            min_width_horizontal: 16.0,
+            min_width_triangle: 18.0,
+            min_width_vertical: 20.0,
+            width: 4.0,
+            square_terminal: 3.0,
+            right_sweep_end_scale_factor: 1.1,
+            curve_size: 10.0,
+            use_curve,
+            adjust_foot_left: vec![0.0, 2.0, 4.0, 6.0, 8.0],
+            adjust_foot_right: vec![0.0, 3.0, 6.0, 9.0, 12.0],
             k_adjust_kakato_range_x: 20.0,
             k_adjust_kakato_range_y: vec![1.0, 19.0, 24.0, 30.0],
             k_adjust_kakato_step: 3.0,

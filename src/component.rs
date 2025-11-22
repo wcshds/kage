@@ -1,30 +1,36 @@
 use std::collections::HashMap;
 
-struct Component {
+pub struct Components {
     hash: HashMap<String, String>,
 }
 
-impl Component {
-    fn new() -> Self {
-        Component {
+impl Components {
+    pub(crate) fn new() -> Self {
+        Components {
             hash: HashMap::new(),
         }
     }
 
     /// Adds or updates an element with the given glyph name and KAGE data.
-    fn set(&mut self, name: String, data: String) -> bool {
-        self.hash.insert(name, data).is_some()
+    pub fn set<S>(&mut self, name: S, data: S) -> bool
+    where
+        S: Into<String>,
+    {
+        self.hash.insert(name.into(), data.into()).is_some()
     }
 
     /// Adds or updates an element with the given glyph name and KAGE data.
     /// It is an alias for the `set` method.
-    fn push(&mut self, name: String, data: String) -> bool {
-        self.hash.insert(name, data).is_some()
+    pub fn push<S>(&mut self, name: S, data: S) -> bool
+    where
+        S: Into<String>,
+    {
+        self.hash.insert(name.into(), data.into()).is_some()
     }
 
     /// Searches the store for the given glyph name and returns the corresponding
     /// KAGE data.
-    fn search(&self, name: &str) -> &str {
-        &self.hash[name]
+    pub fn search(&self, name: &str) -> Option<&str> {
+        self.hash.get(name).map(|x| x.as_str())
     }
 }

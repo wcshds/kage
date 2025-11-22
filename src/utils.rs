@@ -148,21 +148,6 @@ impl Point {
         Self { x, y, off_curve }
     }
 
-    pub(crate) fn new_with_off_curve(x: f64, y: f64, off_curve: bool) -> Self {
-        Self {
-            x,
-            y,
-            off_curve: Some(off_curve),
-        }
-    }
-
-    pub(crate) fn set_is_off_curve(self, off_curve: bool) -> Self {
-        Self {
-            off_curve: Some(off_curve),
-            ..self
-        }
-    }
-
     pub(crate) fn min(&self, other: Point) -> Point {
         Point::new(
             self.x.min(other.x),
@@ -273,6 +258,14 @@ impl Mul<f64> for Point {
 
     fn mul(self, rhs: f64) -> Self::Output {
         Point::new(self.x * rhs, self.y * rhs, self.off_curve)
+    }
+}
+
+impl Mul<Vector> for Point {
+    type Output = Point;
+
+    fn mul(self, rhs: Vector) -> Self::Output {
+        Point::new(self.x * rhs.x, self.y * rhs.y, self.off_curve)
     }
 }
 
@@ -540,29 +533,6 @@ where
         .into()
 }
 
-fn ternary_search_min(func: impl Fn(f64) -> f64, left: f64, right: f64, epsilon: f64) -> f64 {
-    let mut left = left;
-    let mut right = right;
-
-    while (right - left) > epsilon {
-        let x1 = left + (right - left) / 3.0;
-        let x2 = right - (right - left) / 3.0;
-        let y1 = func(x1);
-        let y2 = func(x2);
-        if y1 < y2 {
-            right = x2;
-        } else {
-            left = x1;
-        }
-    }
-
-    left + (right - left) / 2.0
-}
-
-fn ternary_search_max(func: impl Fn(f64) -> f64, left: f64, right: f64, epsilon: f64) -> f64 {
-    ternary_search_min(|x: f64| -func(x), left, right, epsilon)
-}
-
 pub(crate) fn round(num: f64, decimals: i32) -> f64 {
     let factor = 10.0f64.powi(decimals);
     (num * factor).round() / factor
@@ -646,19 +616,6 @@ mod test {
         );
 
         assert_eq!(point, (0.5549999999999962, 16.524).into());
-    }
-
-    #[test]
-    fn test_ternary_search_min() {
-        let func = |x: f64| (x + 1.0).powi(2);
-        let left = -2.0;
-        let right = 5.0;
-        let epsilon = 1e-5;
-
-        let result = ternary_search_min(func, left, right, epsilon);
-
-        // -0.999999849748316
-        assert!(result - (-1.0) <= 1e-5);
     }
 
     #[test]
