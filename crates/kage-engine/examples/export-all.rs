@@ -1,6 +1,6 @@
 use std::fs;
 
-use kage::{kage::Kage, polygons::Polygons};
+use kage_engine::{kage::Kage, polygons::Polygons};
 
 fn main() {
     let mut kage = Kage::new(false);

@@ -15,7 +15,7 @@ tar -xzf dump.tar.gz -C ./data
 Then run:
 
 ```bash
-cargo run --release --example export-all
+cargo run --release -p kage-engine --example export-all
 ```
 
 This will generate SVG files from all raw GlyphWiki Kage data.
