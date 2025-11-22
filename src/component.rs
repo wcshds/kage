@@ -12,18 +12,20 @@ impl Components {
     }
 
     /// Adds or updates an element with the given glyph name and KAGE data.
-    pub fn set<S>(&mut self, name: S, data: S) -> bool
+    pub fn set<S1, S2>(&mut self, name: S1, data: S2) -> bool
     where
-        S: Into<String>,
+        S1: Into<String>,
+        S2: Into<String>,
     {
         self.hash.insert(name.into(), data.into()).is_some()
     }
 
     /// Adds or updates an element with the given glyph name and KAGE data.
     /// It is an alias for the `set` method.
-    pub fn push<S>(&mut self, name: S, data: S) -> bool
+    pub fn push<S1, S2>(&mut self, name: S1, data: S2) -> bool
     where
-        S: Into<String>,
+        S1: Into<String>,
+        S2: Into<String>,
     {
         self.hash.insert(name.into(), data.into()).is_some()
     }
@@ -32,5 +34,9 @@ impl Components {
     /// KAGE data.
     pub fn search(&self, name: &str) -> Option<&str> {
         self.hash.get(name).map(|x| x.as_str())
+    }
+
+    pub fn len(&self) -> usize {
+        self.hash.len()
     }
 }

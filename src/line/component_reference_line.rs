@@ -1,7 +1,7 @@
 use crate::utils::Point;
 
 #[derive(Debug, PartialEq)]
-pub(crate) struct ComponentReferenceLine<'a> {
+pub struct ComponentReferenceLine<'a> {
     pub(crate) component_name: &'a str,
     pub(crate) box_diag_1: Point,
     pub(crate) box_diag_2: Point,

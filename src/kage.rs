@@ -96,7 +96,7 @@ impl Kage {
         }
     }
 
-    fn get_each_expanded_line<'a>(&'a self, glyph_data: &'a str) -> Vec<Line<'a>> {
+    pub fn get_each_expanded_line<'a>(&'a self, glyph_data: &'a str) -> Vec<Line<'a>> {
         let mut lines = Vec::new();
 
         for line_data in glyph_data.split('$') {

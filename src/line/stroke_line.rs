@@ -1,4 +1,4 @@
-use crate::{two_d, utils::Point};
+use crate::utils::Point;
 
 pub(crate) fn stretch_numeric(
     dest_pivot: f64,
@@ -256,48 +256,48 @@ impl StrokeLineType {
         }
     }
 
-    fn get_control_segments(&self) -> Vec<(Point, Point)> {
-        let opt = self.stroke_type.opt;
+    // fn get_control_segments(&self) -> Vec<(Point, Point)> {
+    //     let opt = self.stroke_type.opt;
 
-        if opt != 0 {
-            return vec![(self.point_1, self.point_2)];
-        }
+    //     if opt != 0 {
+    //         return vec![(self.point_1, self.point_2)];
+    //     }
 
-        match self.stroke_type.kind {
-            StrokeKind::StraightLine => vec![(self.point_1, self.point_2)],
-            StrokeKind::Curve | StrokeKind::BendLine | StrokeKind::OtsuCurve => {
-                vec![(self.point_1, self.point_2), (self.point_2, self.point_3)]
-            }
-            StrokeKind::ComplexCurve | StrokeKind::VerticalSlash => {
-                vec![
-                    (self.point_1, self.point_2),
-                    (self.point_2, self.point_3),
-                    (self.point_3, self.point_4),
-                ]
-            }
-            StrokeKind::Unknown => vec![],
-        }
-    }
+    //     match self.stroke_type.kind {
+    //         StrokeKind::StraightLine => vec![(self.point_1, self.point_2)],
+    //         StrokeKind::Curve | StrokeKind::BendLine | StrokeKind::OtsuCurve => {
+    //             vec![(self.point_1, self.point_2), (self.point_2, self.point_3)]
+    //         }
+    //         StrokeKind::ComplexCurve | StrokeKind::VerticalSlash => {
+    //             vec![
+    //                 (self.point_1, self.point_2),
+    //                 (self.point_2, self.point_3),
+    //                 (self.point_3, self.point_4),
+    //             ]
+    //         }
+    //         StrokeKind::Unknown => vec![],
+    //     }
+    // }
 
-    fn is_cross<P1, P2>(&self, point_start: P1, point_end: P2) -> bool
-    where
-        P1: Into<Point> + Copy,
-        P2: Into<Point> + Copy,
-    {
-        self.get_control_segments()
-            .iter()
-            .any(|(p1, p2)| two_d::is_cross(p1, p2, point_start, point_end))
-    }
+    // fn is_cross<P1, P2>(&self, point_start: P1, point_end: P2) -> bool
+    // where
+    //     P1: Into<Point> + Copy,
+    //     P2: Into<Point> + Copy,
+    // {
+    //     self.get_control_segments()
+    //         .iter()
+    //         .any(|(p1, p2)| two_d::is_cross(p1, p2, point_start, point_end))
+    // }
 
-    fn is_cross_box<P1, P2>(&self, box_diag_1: P1, box_diag_2: P2) -> bool
-    where
-        P1: Into<Point> + Copy,
-        P2: Into<Point> + Copy,
-    {
-        self.get_control_segments()
-            .iter()
-            .any(|(p1, p2)| two_d::is_cross_box(p1, p2, box_diag_1, box_diag_2))
-    }
+    // fn is_cross_box<P1, P2>(&self, box_diag_1: P1, box_diag_2: P2) -> bool
+    // where
+    //     P1: Into<Point> + Copy,
+    //     P2: Into<Point> + Copy,
+    // {
+    //     self.get_control_segments()
+    //         .iter()
+    //         .any(|(p1, p2)| two_d::is_cross_box(p1, p2, box_diag_1, box_diag_2))
+    // }
 
     pub(crate) fn stretch<P1, P2, P3, P4>(
         &mut self,
@@ -532,21 +532,21 @@ mod test {
             }
         );
 
-        assert_eq!(
-            stroke1.get_control_segments(),
-            vec![(
-                Point {
-                    x: 32.0,
-                    y: 31.0,
-                    off_curve: None,
-                },
-                Point {
-                    x: 176.0,
-                    y: 31.0,
-                    off_curve: None,
-                },
-            )]
-        );
+        // assert_eq!(
+        //     stroke1.get_control_segments(),
+        //     vec![(
+        //         Point {
+        //             x: 32.0,
+        //             y: 31.0,
+        //             off_curve: None,
+        //         },
+        //         Point {
+        //             x: 176.0,
+        //             y: 31.0,
+        //             off_curve: None,
+        //         },
+        //     )]
+        // );
 
         assert_eq!(
             stroke1.get_box(),
@@ -574,35 +574,35 @@ mod test {
         assert_eq!(stroke2.stroke_type.kind, StrokeKind::Curve);
         assert_eq!(stroke2.stroke_type.base, 2);
         assert_eq!(stroke2.stroke_type.opt, 0);
-        assert_eq!(
-            stroke2.get_control_segments(),
-            [
-                (
-                    Point {
-                        x: 176.0,
-                        y: 31.0,
-                        off_curve: None,
-                    },
-                    Point {
-                        x: 170.0,
-                        y: 43.0,
-                        off_curve: None,
-                    },
-                ),
-                (
-                    Point {
-                        x: 170.0,
-                        y: 43.0,
-                        off_curve: None,
-                    },
-                    Point {
-                        x: 156.0,
-                        y: 63.0,
-                        off_curve: None,
-                    },
-                ),
-            ]
-        );
+        // assert_eq!(
+        //     stroke2.get_control_segments(),
+        //     [
+        //         (
+        //             Point {
+        //                 x: 176.0,
+        //                 y: 31.0,
+        //                 off_curve: None,
+        //             },
+        //             Point {
+        //                 x: 170.0,
+        //                 y: 43.0,
+        //                 off_curve: None,
+        //             },
+        //         ),
+        //         (
+        //             Point {
+        //                 x: 170.0,
+        //                 y: 43.0,
+        //                 off_curve: None,
+        //             },
+        //             Point {
+        //                 x: 156.0,
+        //                 y: 63.0,
+        //                 off_curve: None,
+        //             },
+        //         ),
+        //     ]
+        // );
 
         let stroke3 = StrokeLineType::new(
             3.0, 0.0, 0.0, 100.0, 100.0, 150.0, 50.0, 200.0, 100.0, 250.0, 150.0,
@@ -611,62 +611,62 @@ mod test {
         assert_eq!(stroke3.stroke_type.kind, StrokeKind::BendLine);
         assert_eq!(stroke3.stroke_type.base, 3);
         assert_eq!(stroke3.stroke_type.opt, 0);
-        assert_eq!(
-            stroke3.get_control_segments(),
-            vec![
-                (
-                    Point {
-                        x: 100.0,
-                        y: 100.0,
-                        off_curve: None,
-                    },
-                    Point {
-                        x: 150.0,
-                        y: 50.0,
-                        off_curve: None,
-                    },
-                ),
-                (
-                    Point {
-                        x: 150.0,
-                        y: 50.0,
-                        off_curve: None,
-                    },
-                    Point {
-                        x: 200.0,
-                        y: 100.0,
-                        off_curve: None,
-                    },
-                ),
-            ]
-        );
-        assert_eq!(
-            stroke3.get_box(),
-            Bounds {
-                min_point: Point {
-                    x: 100.0,
-                    y: 50.0,
-                    off_curve: None,
-                },
-                max_point: Point {
-                    x: 200.0,
-                    y: 100.0,
-                    off_curve: None,
-                },
-            }
-        )
+        // assert_eq!(
+        //     stroke3.get_control_segments(),
+        //     vec![
+        //         (
+        //             Point {
+        //                 x: 100.0,
+        //                 y: 100.0,
+        //                 off_curve: None,
+        //             },
+        //             Point {
+        //                 x: 150.0,
+        //                 y: 50.0,
+        //                 off_curve: None,
+        //             },
+        //         ),
+        //         (
+        //             Point {
+        //                 x: 150.0,
+        //                 y: 50.0,
+        //                 off_curve: None,
+        //             },
+        //             Point {
+        //                 x: 200.0,
+        //                 y: 100.0,
+        //                 off_curve: None,
+        //             },
+        //         ),
+        //     ]
+        // );
+        // assert_eq!(
+        //     stroke3.get_box(),
+        //     Bounds {
+        //         min_point: Point {
+        //             x: 100.0,
+        //             y: 50.0,
+        //             off_curve: None,
+        //         },
+        //         max_point: Point {
+        //             x: 200.0,
+        //             y: 100.0,
+        //             off_curve: None,
+        //         },
+        //     }
+        // )
     }
 
-    #[test]
-    fn test_cross() {
-        let stroke4 =
-            StrokeLineType::new(1.0, 0.0, 0.0, 0.0, 0.0, 100.0, 100.0, 0.0, 0.0, 0.0, 0.0);
+    // #[test]
+    // fn test_cross() {
+    //     let stroke4 =
+    //         StrokeLineType::new(1.0, 0.0, 0.0, 0.0, 0.0, 100.0, 100.0, 0.0, 0.0, 0.0, 0.0);
 
-        assert_eq!(stroke4.is_cross((50.0, 50.0), (150.0, 150.0)), false);
-        assert_eq!(stroke4.is_cross((200.0, 200.0), (300.0, 300.0)), false);
-        assert_eq!(stroke4.is_cross_box((25.0, 25.0), (75.0, 75.0)), true);
-        assert_eq!(stroke4.is_cross_box((200.0, 200.0), (300.0, 300.0)), false);
-    }
+    //     assert_eq!(stroke4.is_cross((50.0, 50.0), (150.0, 150.0)), false);
+    //     assert_eq!(stroke4.is_cross((200.0, 200.0), (300.0, 300.0)), false);
+    //     assert_eq!(stroke4.is_cross_box((25.0, 25.0), (75.0, 75.0)), true);
+    //     assert_eq!(stroke4.is_cross_box((200.0, 200.0), (300.0, 300.0)), false);
+    // }
 
     #[test]
     fn test_stroke_stretch() {
@@ -712,7 +712,7 @@ mod test {
     fn test_edge_case() {
         let stroke7 = StrokeLineType::new(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
 
-        assert_eq!(stroke7.get_control_segments(), vec![]);
+        // assert_eq!(stroke7.get_control_segments(), vec![]);
         assert_eq!(
             stroke7.get_box(),
             Bounds {

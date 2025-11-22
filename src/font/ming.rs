@@ -1045,7 +1045,10 @@ impl Ming {
                             1,
                             pen_2.get_point(
                                 min_width_vertical,
-                                self.adjust_foot_left[foot_adjustment],
+                                *self
+                                    .adjust_foot_left
+                                    .get(foot_adjustment)
+                                    .unwrap_or(&f64::NAN),
                                 false,
                             ),
                         )
@@ -1055,7 +1058,10 @@ impl Ming {
                             2,
                             pen_2.get_point(
                                 -min_width_vertical,
-                                self.adjust_foot_left[foot_adjustment] + min_width_vertical,
+                                self.adjust_foot_left
+                                    .get(foot_adjustment)
+                                    .unwrap_or(&f64::NAN)
+                                    + min_width_vertical,
                                 false,
                             ),
                         )
@@ -1067,7 +1073,10 @@ impl Ming {
                             1,
                             pen_2.get_point(
                                 min_width_vertical,
-                                self.adjust_foot_right[foot_adjustment],
+                                *self
+                                    .adjust_foot_right
+                                    .get(foot_adjustment)
+                                    .unwrap_or(&f64::NAN),
                                 false,
                             ),
                         )
@@ -1077,7 +1086,10 @@ impl Ming {
                             2,
                             pen_2.get_point(
                                 -min_width_vertical,
-                                self.adjust_foot_right[foot_adjustment] + min_width_vertical,
+                                self.adjust_foot_right
+                                    .get(foot_adjustment)
+                                    .unwrap_or(&f64::NAN)
+                                    + min_width_vertical,
                                 false,
                             ),
                         )
@@ -1425,7 +1437,11 @@ impl Ming {
                     let mut polygon_2 = pen_2.get_polygon(&[
                         (0.0, -self.min_width_horizontal, false),
                         (
-                            -self.k_adjust_uroko_x[triangle_adjustment] * triangle_scale,
+                            -self
+                                .k_adjust_uroko_x
+                                .get(triangle_adjustment)
+                                .unwrap_or(&f64::NAN)
+                                * triangle_scale,
                             0.0,
                             false,
                         ),
@@ -1433,12 +1449,18 @@ impl Ming {
                     polygon_2.push(
                         end_point.x
                             - (cos_radian - sin_radian)
-                                * self.k_adjust_uroko_x[triangle_adjustment]
+                                * self
+                                    .k_adjust_uroko_x
+                                    .get(triangle_adjustment)
+                                    .unwrap_or(&f64::NAN)
                                 * triangle_scale
                                 / 2.0,
                         end_point.y
                             - (sin_radian + cos_radian)
-                                * self.k_adjust_uroko_y[triangle_adjustment]
+                                * self
+                                    .k_adjust_uroko_y
+                                    .get(triangle_adjustment)
+                                    .unwrap_or(&f64::NAN)
                                 * triangle_scale,
                         Some(false),
                     );

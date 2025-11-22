@@ -10,7 +10,7 @@ pub(crate) enum TransformType {
 }
 
 #[derive(Debug, PartialEq)]
-pub(crate) struct SpecialLineType {
+pub struct SpecialLineType {
     pub(crate) transform_type: TransformType,
     pub(crate) box_diag_1: Point,
     pub(crate) box_diag_2: Point,

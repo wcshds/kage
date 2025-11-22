@@ -9,7 +9,7 @@ use crate::line::{
 };
 
 #[derive(Debug, PartialEq)]
-pub(crate) enum Line<'a> {
+pub enum Line<'a> {
     /// 特殊行
     SpecialLine(SpecialLineType),
     /// 筆劃行
@@ -136,6 +136,99 @@ impl<'a> Line<'a> {
                 }
             }
         }
+    }
+}
+
+pub trait LineVecTrait {
+    fn generate_kage(&self) -> String;
+}
+
+impl<'a> LineVecTrait for Vec<Line<'a>> {
+    fn generate_kage(&self) -> String {
+        let mut result = String::new();
+
+        for line in self {
+            match line {
+                Line::SpecialLine(special_line) => {
+                    match special_line.transform_type {
+                        TransformType::VerticalFlip => result.push_str("0:97:0:"),
+                        TransformType::HorizontalFlip => result.push_str("0:98:0:"),
+                        TransformType::Rotate90 => result.push_str("0:99:1:"),
+                        TransformType::Rotate180 => result.push_str("0:99:2:"),
+                        TransformType::Rotate270 => result.push_str("0:99:3:"),
+                    }
+                    result.push_str(&format!(
+                        "{}:{}:{}:{}",
+                        special_line.box_diag_1.x,
+                        special_line.box_diag_1.y,
+                        special_line.box_diag_2.x,
+                        special_line.box_diag_2.y
+                    ));
+                    result.push('$');
+                }
+                Line::ComponentReferenceLine(component_reference_line) => {
+                    result.push_str("99:");
+                    result.push_str(&format!(
+                        "{}:{}:",
+                        component_reference_line.primary_control_point.x,
+                        component_reference_line.primary_control_point.y,
+                    ));
+                    result.push_str(&format!(
+                        "{}:{}:",
+                        component_reference_line.box_diag_1.x,
+                        component_reference_line.box_diag_1.y,
+                    ));
+                    result.push_str(&format!(
+                        "{}:{}:",
+                        component_reference_line.box_diag_2.x,
+                        component_reference_line.box_diag_2.y,
+                    ));
+                    result.push_str(&format!(
+                        "0:{}:{}",
+                        component_reference_line.secondary_control_point.x,
+                        component_reference_line.secondary_control_point.y,
+                    ));
+                    result.push('$');
+                }
+                Line::StrokeLine(stroke_line) => {
+                    result.push_str(&format!(
+                        "{}:{}:{}:",
+                        stroke_line.stroke_type.base,
+                        stroke_line.head_shape.base + stroke_line.head_shape.opt * 100,
+                        stroke_line.tail_shape.base + stroke_line.tail_shape.opt * 100,
+                    ));
+                    result.push_str(&format!(
+                        "{}:{}:{}:{}",
+                        stroke_line.point_1.x,
+                        stroke_line.point_1.y,
+                        stroke_line.point_2.x,
+                        stroke_line.point_2.y,
+                    ));
+                    match stroke_line.stroke_type.kind {
+                        StrokeKind::Curve | StrokeKind::BendLine | StrokeKind::OtsuCurve => {
+                            result.push_str(&format!(
+                                ":{}:{}",
+                                stroke_line.point_3.x, stroke_line.point_3.y,
+                            ));
+                        }
+                        StrokeKind::ComplexCurve | StrokeKind::VerticalSlash => {
+                            result.push_str(&format!(
+                                ":{}:{}:{}:{}",
+                                stroke_line.point_3.x,
+                                stroke_line.point_3.y,
+                                stroke_line.point_4.x,
+                                stroke_line.point_4.y,
+                            ));
+                        }
+                        StrokeKind::StraightLine | StrokeKind::Unknown => {}
+                    }
+                    result.push('$');
+                }
+                _ => {}
+            }
+        }
+
+        result
     }
 }
 

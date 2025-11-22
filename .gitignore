@@ -1,1 +1,6 @@
 /target
+/results
+/test.svg
+/examples/test*.rs
+/dump*
+/data
