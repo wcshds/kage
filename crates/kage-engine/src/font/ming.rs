@@ -1240,31 +1240,36 @@ impl Ming {
                     polygons.push(polygon);
                 }
                 &EndKind::Free => {
-                    let polygon = pen_1.get_polygon(&[
+                    let mut polygon = pen_1.get_polygon(&[
                         (min_width_vertical, self.min_width_horizontal * 0.5, false),
                         (
                             min_width_vertical * 1.5,
                             self.min_width_horizontal * 1.5,
                             false,
                         ),
-                        if start_point.x != end_point.x {
-                            (
-                                start_point.x
-                                    + (self.min_width_vertical - 2.0) * sin_radian
-                                    + (self.min_width_horizontal * 2.5) * cos_radian,
-                                start_point.y
-                                    + (self.min_width_vertical + 1.0) * (-cos_radian)
-                                    + (self.min_width_horizontal * 2.5) * sin_radian,
-                                false,
-                            )
-                        } else {
-                            (
-                                min_width_vertical - 2.0,
-                                self.min_width_horizontal * 2.5 + 1.0,
-                                false,
-                            )
-                        },
+                        (
+                            min_width_vertical - 2.0,
+                            self.min_width_horizontal * 2.5 + 1.0,
+                            false,
+                        ),
                     ]);
+
+                    if start_point.x != end_point.x {
+                        polygon
+                            .set_point(
+                                2,
+                                (
+                                    start_point.x
+                                        + (min_width_vertical - 2.0) * sin_radian
+                                        + (self.min_width_horizontal * 2.5) * cos_radian,
+                                    start_point.y
+                                        + (min_width_vertical + 1.0) * (-cos_radian)
+                                        + (self.min_width_horizontal * 2.5) * sin_radian,
+                                    false,
+                                ),
+                            )
+                            .expect("The length of polygon is equal to 3.");
+                    }
                     polygons.push(polygon);
                 }
                 _ => {}
