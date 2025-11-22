@@ -31,7 +31,7 @@ impl<'a> Line<'a> {
             // what the initial JavaScript version does.
             .split(':')
             .map(|each| {
-                if let Ok(parsed) = each.parse::<f64>() {
+                if let Ok(parsed) = each.trim().parse::<f64>() {
                     FieldType::Num(parsed)
                 } else {
                     FieldType::Str(each)

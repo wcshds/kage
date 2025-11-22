@@ -1,5 +1,3 @@
 [workspace]
-members = [
-    "crates/kage-engine",
-    "crates/kage-typst",
-]
+resolver = "3"
+members = ["crates/kage-engine", "crates/kage-typst"]

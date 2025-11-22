@@ -1,6 +1,7 @@
 /target
-/results
+/results*
 /test.svg
 /**/examples/test*.rs
 /dump*
 /data
+/*/**/*.pdf
