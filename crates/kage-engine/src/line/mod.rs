@@ -30,7 +30,11 @@ impl<'a> Line<'a> {
             Str(&'a str),
         }
 
-        let mut tmp = line_data.split("~");
+        let mut tmp = if line_data.contains("::") {
+            line_data.split("::")
+        } else {
+            line_data.split("~")
+        };
         let main_line_data = match tmp.next() {
             Some(content) => content,
             None => "",
