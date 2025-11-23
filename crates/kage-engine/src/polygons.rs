@@ -204,7 +204,7 @@ mod tests {
     fn test_generate_svg() {
         // case 1: simple triangle;
         let mut polygons1 = Polygons::new();
-        let mut triangle = Polygon::new_empty();
+        let mut triangle = Polygon::new_empty(None);
         triangle.push_point((50.0, 50.0));
         triangle.push_point((150.0, 50.0));
         triangle.push_point((100.0, 150.0));
@@ -229,7 +229,7 @@ mod tests {
 
         // case 2: simple square;
         let mut polygons2 = Polygons::new();
-        let mut square = Polygon::new_empty();
+        let mut square = Polygon::new_empty(None);
         square.push_point((30.0, 30.0));
         square.push_point((170.0, 30.0));
         square.push_point((170.0, 170.0));
@@ -258,7 +258,7 @@ mod tests {
     fn test_generate_eps() {
         // case 1: simple triangle;
         let mut polygons1 = Polygons::new();
-        let mut triangle = Polygon::new_empty();
+        let mut triangle = Polygon::new_empty(None);
         triangle.push_point((50.0, 50.0));
         triangle.push_point((150.0, 50.0));
         triangle.push_point((100.0, 150.0));
@@ -289,7 +289,7 @@ fill
 
         // case 2: simple square;
         let mut polygons2 = Polygons::new();
-        let mut square = Polygon::new_empty();
+        let mut square = Polygon::new_empty(None);
         square.push_point((30.0, 30.0));
         square.push_point((170.0, 30.0));
         square.push_point((170.0, 170.0));
@@ -325,7 +325,7 @@ fill
         let mut polygons = Polygons::new();
 
         // 創建一個複雜的多邊形 - 外圍矩形
-        let mut outer_rect = Polygon::new_empty();
+        let mut outer_rect = Polygon::new_empty(None);
         outer_rect.push_point((20.0, 20.0));
         outer_rect.push_point((180.0, 20.0));
         outer_rect.push_point((180.0, 80.0));
@@ -333,7 +333,7 @@ fill
         polygons.push(outer_rect);
 
         // 創建一個帶有曲線的多邊形（模擬漢字筆畫）
-        let mut curved_shape = Polygon::new_empty();
+        let mut curved_shape = Polygon::new_empty(None);
         curved_shape.push_point((30.0, 100.0));
         curved_shape.push_point((60.0, 100.0));
         curved_shape.push_point((75.0, 110.0, true)); // control point
@@ -346,7 +346,7 @@ fill
         polygons.push(curved_shape);
 
         // 創建一個圓形（使用多個控制點模擬）
-        let mut circle = Polygon::new_empty();
+        let mut circle = Polygon::new_empty(None);
         let center_x = 140.0;
         let center_y = 140.0;
         let radius = 30.0;
@@ -375,7 +375,7 @@ fill
         polygons.push(circle);
 
         // 創建一個帶有旋轉變換的三角形
-        let mut triangle = Polygon::new_empty();
+        let mut triangle = Polygon::new_empty(None);
         triangle.push_point((100.0, 40.0));
         triangle.push_point((120.0, 70.0));
         triangle.push_point((80.0, 70.0));

@@ -559,7 +559,7 @@ impl Rgb {
     }
 
     pub(crate) fn hex(&self) -> String {
-        format!("#{:X}{:X}{:X}", self.0, self.1, self.2,)
+        format!("#{:02X}{:02X}{:02X}", self.0, self.1, self.2,)
     }
 }
 

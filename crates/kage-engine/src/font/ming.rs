@@ -913,7 +913,7 @@ impl Ming {
             pen_1.set_matrix2(sin_radian, -cos_radian);
             pen_2.set_matrix2(sin_radian, -cos_radian);
 
-            let mut polygon = Polygon::new_with_length(4);
+            let mut polygon = Polygon::new_with_length(4, color);
             match &head_shape.kind {
                 &EndKind::Free => {
                     polygon
@@ -1342,7 +1342,7 @@ impl Ming {
                         || (start_point.x != end_point.x
                             && matches!(&tail_shape.kind, &EndKind::RightUpwardFlick))))
             {
-                let mut polygon = Polygon::new_empty();
+                let mut polygon = Polygon::new_empty(color);
                 if self.use_curve {
                     polygon.push_point(pen_2.get_point(min_width_vertical, 0.0, false));
                     polygon.push(

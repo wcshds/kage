@@ -27,29 +27,20 @@ impl Polygon {
 
     /// Return a `Polygon` with the given length, the points are
     /// all initialized to the origin (0.0, 0.0, false).
-    pub fn new_with_length(length: usize) -> Self {
+    pub fn new_with_length(length: usize, color: Option<Rgb>) -> Self {
         let points = vec![(0.0, 0.0, false).into(); length];
 
-        Self {
-            points,
-            color: None,
-        }
+        Self { points, color }
     }
 
-    pub fn new_empty() -> Self {
+    pub fn new_empty(color: Option<Rgb>) -> Self {
         let points = Vec::new();
-        Self {
-            points,
-            color: None,
-        }
+        Self { points, color }
     }
 
-    pub fn new_empty_with_capacity(capacity: usize) -> Self {
+    pub fn new_empty_with_capacity(capacity: usize, color: Option<Rgb>) -> Self {
         let points = Vec::with_capacity(capacity);
-        Self {
-            points,
-            color: None,
-        }
+        Self { points, color }
     }
 
     pub fn set_color(&mut self, red: u8, green: u8, blue: u8) {
@@ -254,7 +245,7 @@ mod test {
 
     #[test]
     fn test_construction() {
-        let polygon_len3 = Polygon::new_with_length(3);
+        let polygon_len3 = Polygon::new_with_length(3, None);
         assert_eq!(polygon_len3.len(), 3);
         for i in 0..3 {
             assert_eq!(polygon_len3.get(i), Some(Point::new(0.0, 0.0, Some(false))));
@@ -277,7 +268,7 @@ mod test {
 
     #[test]
     fn test_polygon_basic_operations() {
-        let mut polygon = Polygon::new_empty();
+        let mut polygon = Polygon::new_empty(None);
 
         polygon.push(10.0, 20.0, Some(false));
         polygon.push_point((3.0, 4.0, true));
