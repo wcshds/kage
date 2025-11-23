@@ -2,10 +2,13 @@ pub(crate) mod component_reference_line;
 pub(crate) mod special_line;
 pub(crate) mod stroke_line;
 
-use crate::line::{
-    component_reference_line::ComponentReferenceLine,
-    special_line::{SpecialLineType, TransformType},
-    stroke_line::{StrokeKind, StrokeLineType},
+use crate::{
+    line::{
+        component_reference_line::ComponentReferenceLine,
+        special_line::{SpecialLineType, TransformType},
+        stroke_line::{StrokeKind, StrokeLineType},
+    },
+    utils::Rgb,
 };
 
 #[derive(Debug, PartialEq)]
@@ -26,7 +29,15 @@ impl<'a> Line<'a> {
             Num(f64),
             Str(&'a str),
         }
-        let mut fields = line_data
+
+        let mut tmp = line_data.split("~");
+        let main_line_data = match tmp.next() {
+            Some(content) => content,
+            None => "",
+        };
+        let extra_line_data = tmp.next();
+
+        let mut fields = main_line_data
             // I think this implementation is very naïve, but this is
             // what the initial JavaScript version does.
             .split(':')
@@ -80,6 +91,41 @@ impl<'a> Line<'a> {
         let field_9 = next_num_field!(fields);
         let field_10 = next_num_field!(fields);
         let field_11 = next_num_field!(fields);
+        let color = match extra_line_data {
+            Some(content) => {
+                let mut tmp = content.split(":");
+                let red = match tmp.next() {
+                    Some(num) => num
+                        .trim()
+                        .parse::<u8>()
+                        .map(|each| Some(each))
+                        .unwrap_or(None),
+                    None => None,
+                };
+                let green = match tmp.next() {
+                    Some(num) => num
+                        .trim()
+                        .parse::<u8>()
+                        .map(|each| Some(each))
+                        .unwrap_or(None),
+                    None => None,
+                };
+                let blue = match tmp.next() {
+                    Some(num) => num
+                        .trim()
+                        .parse::<u8>()
+                        .map(|each| Some(each))
+                        .unwrap_or(None),
+                    None => None,
+                };
+
+                match (red, blue, green) {
+                    (Some(r), Some(g), Some(b)) => Some(Rgb::new(r, g, b)),
+                    _ => None,
+                }
+            }
+            None => None,
+        };
 
         match (field_1 as u32, field_2 as u32, field_3 as u32) {
             (99, _, _) => Line::ComponentReferenceLine(ComponentReferenceLine {
@@ -88,6 +134,7 @@ impl<'a> Line<'a> {
                 box_diag_2: (field_6, field_7, None).into(),
                 primary_control_point: (field_2, field_3, None).into(), // None or Some?
                 secondary_control_point: (field_10, field_11, None).into(), // None or Some?
+                color,
             }),
             // special line
             (0, 99, 1) => Line::SpecialLine(SpecialLineType {
@@ -128,6 +175,7 @@ impl<'a> Line<'a> {
                     field_9,
                     field_10,
                     field_11,
+                    color,
                 );
 
                 match stroke_result.stroke_type.kind {

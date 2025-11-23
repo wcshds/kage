@@ -13,7 +13,7 @@ use crate::{
     pen::Pen,
     polygon::Polygon,
     polygons::Polygons,
-    utils::{Point, Vector, is_quadratic, normalize},
+    utils::{Point, Rgb, Vector, is_quadratic, normalize},
 };
 
 pub struct Ming {
@@ -95,6 +95,7 @@ impl Ming {
         min_width_vertical: f64,
         start_width_reduction: f64,
         width_change_rate: f64,
+        color: Option<Rgb>,
     ) {
         let is_quadratic = is_quadratic(control_point_1, control_point_2);
 
@@ -175,13 +176,16 @@ impl Ming {
                 _ => return,
             };
 
-            let mut polygon_1 = Polygon::new(vec![
-                left_fitted_1.start_point,
-                left_fitted_1.control_point,
-                left_fitted_1.end_point,
-                left_fitted_2.control_point,
-                left_fitted_2.end_point,
-            ]);
+            let mut polygon_1 = Polygon::new(
+                vec![
+                    left_fitted_1.start_point,
+                    left_fitted_1.control_point,
+                    left_fitted_1.end_point,
+                    left_fitted_2.control_point,
+                    left_fitted_2.end_point,
+                ],
+                color,
+            );
             let mut polygon_2 = {
                 let point_1 = right_sampled_points[0];
                 let point_2 = right_rough_estimate_control_point_1
@@ -191,13 +195,16 @@ impl Ming {
                     - (left_fitted_2.control_point - left_rough_estimate_control_point_2);
                 let point_5 = right_sampled_points[right_sampled_points.len() - 1];
 
-                Polygon::new::<Point>(vec![
-                    (point_1.x, point_1.y, false).into(),
-                    (point_2.x, point_2.y, true).into(),
-                    (point_3.x, point_3.y, false).into(),
-                    (point_4.x, point_4.y, true).into(),
-                    (point_5.x, point_5.y, false).into(),
-                ])
+                Polygon::new::<Point>(
+                    vec![
+                        (point_1.x, point_1.y, false).into(),
+                        (point_2.x, point_2.y, true).into(),
+                        (point_3.x, point_3.y, false).into(),
+                        (point_4.x, point_4.y, true).into(),
+                        (point_5.x, point_5.y, false).into(),
+                    ],
+                    color,
+                )
             };
 
             polygon_2.reverse();
@@ -255,8 +262,8 @@ impl Ming {
                 },
             );
 
-            let mut polygon_1 = Polygon::new(left_sampled_points);
-            let mut polygon_2 = Polygon::new(right_sampled_points);
+            let mut polygon_1 = Polygon::new(left_sampled_points, color);
+            let mut polygon_2 = Polygon::new(right_sampled_points, color);
 
             if (matches!(head_shape.kind, EndKind::VerticalConnection) && head_shape.opt_1 == 1)
                 || (matches!(tail_shape.kind, EndKind::TopRightCorner) && tail_shape.opt_1 == 0)
@@ -322,6 +329,7 @@ impl Ming {
         min_width_vertical: f64,
         is_up_to_bottom: bool,
         corner_offset: f64,
+        color: Option<Rgb>,
     ) {
         match &head_shape.kind {
             &EndKind::TopLeftCorner => {
@@ -332,11 +340,14 @@ impl Ming {
                     pen.set_down(control_point_1.x, control_point_1.y);
                 }
 
-                let polygon = pen.get_polygon(&[
-                    (-min_width_vertical, 0.0),
-                    (min_width_vertical, 0.0),
-                    (-min_width_vertical, -min_width_vertical),
-                ]);
+                let polygon = pen.get_polygon(
+                    &[
+                        (-min_width_vertical, 0.0),
+                        (min_width_vertical, 0.0),
+                        (-min_width_vertical, -min_width_vertical),
+                    ],
+                    color,
+                );
 
                 polygons.push(polygon);
             }
@@ -362,14 +373,17 @@ impl Ming {
 
                     let plus_minus = shape_factor.signum();
 
-                    let polygon_1 = pen.get_polygon(&[
-                        (-min_width_vertical, 1.0),
-                        (min_width_vertical, 0.0),
-                        (
-                            -plus_minus * min_width_vertical,
-                            -self.min_width_horizontal * shape_factor.abs(),
-                        ),
-                    ]);
+                    let polygon_1 = pen.get_polygon(
+                        &[
+                            (-min_width_vertical, 1.0),
+                            (min_width_vertical, 0.0),
+                            (
+                                -plus_minus * min_width_vertical,
+                                -self.min_width_horizontal * shape_factor.abs(),
+                            ),
+                        ],
+                        color,
+                    );
                     polygons.push(polygon_1);
 
                     let move_offset = if shape_factor < 0.0 {
@@ -377,33 +391,35 @@ impl Ming {
                     } else {
                         0.0
                     };
-                    let polygon_2 = pen.get_polygon(&if start_point.x == control_point_1.x
-                        && start_point.y == control_point_1.y
-                    {
-                        [
-                            (min_width_vertical, -move_offset),
-                            (
-                                min_width_vertical * 1.5,
-                                self.min_width_horizontal - move_offset,
-                            ),
-                            (
-                                min_width_vertical - 2.0,
-                                self.min_width_horizontal * 2.0 + 1.0,
-                            ),
-                        ]
-                    } else {
-                        [
-                            (min_width_vertical, -move_offset),
-                            (
-                                min_width_vertical * 1.5,
-                                self.min_width_horizontal - move_offset * 1.2,
-                            ),
-                            (
-                                min_width_vertical - 2.0,
-                                self.min_width_horizontal * 2.0 - move_offset * 0.8 + 1.0,
-                            ),
-                        ]
-                    });
+                    let polygon_2 = pen.get_polygon(
+                        &if start_point.x == control_point_1.x && start_point.y == control_point_1.y
+                        {
+                            [
+                                (min_width_vertical, -move_offset),
+                                (
+                                    min_width_vertical * 1.5,
+                                    self.min_width_horizontal - move_offset,
+                                ),
+                                (
+                                    min_width_vertical - 2.0,
+                                    self.min_width_horizontal * 2.0 + 1.0,
+                                ),
+                            ]
+                        } else {
+                            [
+                                (min_width_vertical, -move_offset),
+                                (
+                                    min_width_vertical * 1.5,
+                                    self.min_width_horizontal - move_offset * 1.2,
+                                ),
+                                (
+                                    min_width_vertical - 2.0,
+                                    self.min_width_horizontal * 2.0 - move_offset * 0.8 + 1.0,
+                                ),
+                            ]
+                        },
+                        color,
+                    );
                     polygons.push(polygon_2);
                 } else {
                     let mut pen = Pen::new(start_point.x, start_point.y);
@@ -414,43 +430,55 @@ impl Ming {
                         pen.set_right(control_point_1.x, control_point_1.y);
                     }
 
-                    let polygon_1 = pen.get_polygon(&[
-                        (0.0, min_width_vertical),
-                        (0.0, -min_width_vertical),
-                        (-self.min_width_horizontal, -min_width_vertical),
-                    ]);
+                    let polygon_1 = pen.get_polygon(
+                        &[
+                            (0.0, min_width_vertical),
+                            (0.0, -min_width_vertical),
+                            (-self.min_width_horizontal, -min_width_vertical),
+                        ],
+                        color,
+                    );
                     polygons.push(polygon_1);
 
-                    let polygon_2 = pen.get_polygon(&[
-                        (0.0, min_width_vertical),
-                        (self.min_width_horizontal, min_width_vertical * 1.5),
-                        (self.min_width_horizontal * 3.0, min_width_vertical * 0.5),
-                    ]);
+                    let polygon_2 = pen.get_polygon(
+                        &[
+                            (0.0, min_width_vertical),
+                            (self.min_width_horizontal, min_width_vertical * 1.5),
+                            (self.min_width_horizontal * 3.0, min_width_vertical * 0.5),
+                        ],
+                        color,
+                    );
                     polygons.push(polygon_2);
                 }
             }
             &EndKind::TopRightCorner => {
                 let pen = Pen::new(start_point.x - corner_offset, start_point.y);
-                let polygon = pen.get_polygon(&[
-                    (-min_width_vertical, -self.min_width_horizontal),
-                    (0.0, -self.min_width_horizontal - self.width),
-                    (min_width_vertical + self.width, self.min_width_horizontal),
-                    (min_width_vertical, min_width_vertical - 1.0),
-                    (-min_width_vertical, min_width_vertical + 4.0),
-                ]);
+                let polygon = pen.get_polygon(
+                    &[
+                        (-min_width_vertical, -self.min_width_horizontal),
+                        (0.0, -self.min_width_horizontal - self.width),
+                        (min_width_vertical + self.width, self.min_width_horizontal),
+                        (min_width_vertical, min_width_vertical - 1.0),
+                        (-min_width_vertical, min_width_vertical + 4.0),
+                    ],
+                    color,
+                );
 
                 polygons.push(polygon);
             }
             &EndKind::RoofedNarrowEntry => {
                 let pen = Pen::new(start_point.x - corner_offset, start_point.y);
-                let polygon = pen.get_polygon(&[
-                    (-min_width_vertical, -self.min_width_horizontal),
-                    (0.0, -self.min_width_horizontal - self.width),
-                    (min_width_vertical + self.width, self.min_width_horizontal),
-                    (min_width_vertical, min_width_vertical - 1.0),
-                    (0.0, min_width_vertical + 2.0),
-                    (0.0, 0.0),
-                ]);
+                let polygon = pen.get_polygon(
+                    &[
+                        (-min_width_vertical, -self.min_width_horizontal),
+                        (0.0, -self.min_width_horizontal - self.width),
+                        (min_width_vertical + self.width, self.min_width_horizontal),
+                        (min_width_vertical, min_width_vertical - 1.0),
+                        (0.0, min_width_vertical + 2.0),
+                        (0.0, 0.0),
+                    ],
+                    color,
+                );
 
                 polygons.push(polygon);
             }
@@ -469,6 +497,7 @@ impl Ming {
         hane_adjustment: f64,
         tail_circle_adjustment: f64,
         is_bottom_to_up: bool,
+        color: Option<Rgb>,
     ) {
         match [&head_shape.kind, &tail_shape.kind] {
             [_, &EndKind::Temp1 | &EndKind::Stop | &EndKind::Temp15] => {
@@ -516,7 +545,7 @@ impl Ming {
                         (0.0, min_width_vertical_new, false),
                     ]
                 };
-                let mut polygon = pen.get_polygon(&local_points);
+                let mut polygon = pen.get_polygon(&local_points, color);
 
                 if control_point_2.x == end_point.x {
                     polygon.reverse();
@@ -530,12 +559,15 @@ impl Ming {
                         pen.set_matrix2(-1.0, 0.0);
                     }
 
-                    let polygon = pen.get_polygon(&[
-                        (0.0, -min_width_vertical + 1.0).into(),
-                        (2.0, -min_width_vertical - self.width * 5.0),
-                        (0.0, -min_width_vertical - self.width * 5.0),
-                        (-min_width_vertical, -min_width_vertical + 1.0),
-                    ]);
+                    let polygon = pen.get_polygon(
+                        &[
+                            (0.0, -min_width_vertical + 1.0).into(),
+                            (2.0, -min_width_vertical - self.width * 5.0),
+                            (0.0, -min_width_vertical - self.width * 5.0),
+                            (-min_width_vertical, -min_width_vertical + 1.0),
+                        ],
+                        color,
+                    );
 
                     polygons.push(polygon);
                 }
@@ -572,14 +604,19 @@ impl Ming {
                     pen.set_left(control_point_2.x, control_point_2.y);
                 }
 
-                let polygon = pen.get_polygon(&[
-                    (0.0, min_width_vertical * self.right_sweep_end_scale_factor),
-                    (0.0, -min_width_vertical * self.right_sweep_end_scale_factor),
-                    (
-                        shape_factor.abs() * min_width_vertical * self.right_sweep_end_scale_factor,
-                        plus_minus * min_width_vertical * self.right_sweep_end_scale_factor,
-                    ),
-                ]);
+                let polygon = pen.get_polygon(
+                    &[
+                        (0.0, min_width_vertical * self.right_sweep_end_scale_factor),
+                        (0.0, -min_width_vertical * self.right_sweep_end_scale_factor),
+                        (
+                            shape_factor.abs()
+                                * min_width_vertical
+                                * self.right_sweep_end_scale_factor,
+                            plus_minus * min_width_vertical * self.right_sweep_end_scale_factor,
+                        ),
+                    ],
+                    color,
+                );
                 polygons.push(polygon);
             }
             [_, &EndKind::Temp14] => {
@@ -606,12 +643,15 @@ impl Ming {
                     )
                     * jump_factor;
                 let pen = Pen::new(end_point.x, end_point.y);
-                let polygon = pen.get_polygon(&[
-                    (0.0, 0.0),
-                    (0.0, -min_width_vertical),
-                    (-hane_length, -min_width_vertical),
-                    (-hane_length, -min_width_vertical * 0.5),
-                ]);
+                let polygon = pen.get_polygon(
+                    &[
+                        (0.0, 0.0),
+                        (0.0, -min_width_vertical),
+                        (-hane_length, -min_width_vertical),
+                        (-hane_length, -min_width_vertical * 0.5),
+                    ],
+                    color,
+                );
                 polygons.push(polygon);
             }
             _ => {}
@@ -631,6 +671,7 @@ impl Ming {
         hane_adjustment: f64,
         start_thickness_adjustment: f64,
         end_thickness_adjustment: f64,
+        color: Option<Rgb>,
     ) {
         let min_width_vertical = self.min_width_vertical - vertical_thickness_adjustment / 2.0;
 
@@ -731,6 +772,7 @@ impl Ming {
                 min_width_vertical,
                 start_thickness_adjustment,
                 end_thickness_adjustment,
+                color,
             );
         }
 
@@ -749,6 +791,7 @@ impl Ming {
                 min_width_vertical,
                 is_up_to_bottom,
                 corner_offset,
+                color,
             );
         }
 
@@ -769,6 +812,7 @@ impl Ming {
                 hane_adjustment,
                 end_thickness_adjustment,
                 is_bottom_to_up,
+                color,
             );
         }
     }
@@ -785,6 +829,7 @@ impl Ming {
         flick_adjustment: f64,
         start_thickness_adjustment: f64,
         end_thickness_adjustment: f64,
+        color: Option<Rgb>,
     ) {
         self.cd_draw_curve_universal(
             polygons,
@@ -798,6 +843,7 @@ impl Ming {
             flick_adjustment,
             start_thickness_adjustment,
             end_thickness_adjustment,
+            color,
         )
     }
 
@@ -814,6 +860,7 @@ impl Ming {
         hane_adjustment: f64,
         start_thickness_adjustment: f64,
         end_thickness_adjustment: f64,
+        color: Option<Rgb>,
     ) {
         self.cd_draw_curve_universal(
             polygons,
@@ -827,6 +874,7 @@ impl Ming {
             hane_adjustment,
             start_thickness_adjustment,
             end_thickness_adjustment,
+            color,
         )
     }
 
@@ -840,6 +888,7 @@ impl Ming {
         vertical_adjustment: f64,
         triangle_adjustment: usize,
         foot_adjustment: usize,
+        color: Option<Rgb>,
     ) {
         // TODO: adjust kakato_adjustment if a1 = 1 and a3 in [13, 23]; otherwise equals to a3_opt
         let min_width_vertical = self.min_width_vertical - vertical_adjustment / 2.0;
@@ -1140,31 +1189,37 @@ impl Ming {
             match &tail_shape.kind {
                 &EndKind::BottomRightHorT => {
                     let pen = Pen::new(end_point.x, end_point.y);
-                    let polygon = pen.get_polygon(&[
-                        (0.0, self.min_width_horizontal, false),
-                        if start_point.x == end_point.x {
-                            (min_width_vertical, -self.min_width_horizontal * 3.0, false)
-                        } else {
-                            (
-                                min_width_vertical * 0.5,
-                                -self.min_width_horizontal * 4.0,
-                                false,
-                            )
-                        },
-                        (min_width_vertical * 2.0, -self.min_width_horizontal, false),
-                        (min_width_vertical * 2.0, self.min_width_horizontal, false),
-                    ]);
+                    let polygon = pen.get_polygon(
+                        &[
+                            (0.0, self.min_width_horizontal, false),
+                            if start_point.x == end_point.x {
+                                (min_width_vertical, -self.min_width_horizontal * 3.0, false)
+                            } else {
+                                (
+                                    min_width_vertical * 0.5,
+                                    -self.min_width_horizontal * 4.0,
+                                    false,
+                                )
+                            },
+                            (min_width_vertical * 2.0, -self.min_width_horizontal, false),
+                            (min_width_vertical * 2.0, self.min_width_horizontal, false),
+                        ],
+                        color,
+                    );
                     polygons.push(polygon);
                 }
                 &EndKind::BottomLeftZhNew => {
                     if start_point.x == end_point.x {
                         let pen = Pen::new(end_point.x, end_point.y);
-                        let polygon = pen.get_polygon(&[
-                            (-min_width_vertical, -self.min_width_horizontal * 3.0),
-                            (-min_width_vertical * 2.0, 0.0),
-                            (-self.min_width_horizontal, self.min_width_horizontal * 5.0),
-                            (min_width_vertical, self.min_width_horizontal),
-                        ]);
+                        let polygon = pen.get_polygon(
+                            &[
+                                (-min_width_vertical, -self.min_width_horizontal * 3.0),
+                                (-min_width_vertical * 2.0, 0.0),
+                                (-self.min_width_horizontal, self.min_width_horizontal * 5.0),
+                                (min_width_vertical, self.min_width_horizontal),
+                            ],
+                            color,
+                        );
                         polygons.push(polygon);
                     } else {
                         let offset = if start_point.x > end_point.x && start_point.y != end_point.y
@@ -1176,13 +1231,16 @@ impl Ming {
                         };
 
                         let pen = Pen::new(end_point.x + offset, end_point.y);
-                        let polygon = pen.get_polygon(&[
-                            (0.0, -self.min_width_horizontal * 5.0),
-                            (-min_width_vertical * 2.0, 0.0),
-                            (-self.min_width_horizontal, self.min_width_horizontal * 5.0),
-                            (min_width_vertical, self.min_width_horizontal),
-                            (0.0, 0.0),
-                        ]);
+                        let polygon = pen.get_polygon(
+                            &[
+                                (0.0, -self.min_width_horizontal * 5.0),
+                                (-min_width_vertical * 2.0, 0.0),
+                                (-self.min_width_horizontal, self.min_width_horizontal * 5.0),
+                                (min_width_vertical, self.min_width_horizontal),
+                                (0.0, 0.0),
+                            ],
+                            color,
+                        );
                         polygons.push(polygon);
                     }
                 }
@@ -1211,7 +1269,7 @@ impl Ming {
                         local_points.push((-min_width_vertical, min_width_vertical + 4.0, false))
                     };
 
-                    let polygon = pen.get_polygon(&local_points);
+                    let polygon = pen.get_polygon(&local_points, color);
                     polygons.push(polygon);
                 }
                 &EndKind::RoofedNarrowEntry => {
@@ -1236,23 +1294,26 @@ impl Ming {
                         local_points.push((0.0, 0.0, false));
                     };
 
-                    let polygon = pen.get_polygon(&local_points);
+                    let polygon = pen.get_polygon(&local_points, color);
                     polygons.push(polygon);
                 }
                 &EndKind::Free => {
-                    let mut polygon = pen_1.get_polygon(&[
-                        (min_width_vertical, self.min_width_horizontal * 0.5, false),
-                        (
-                            min_width_vertical * 1.5,
-                            self.min_width_horizontal * 1.5,
-                            false,
-                        ),
-                        (
-                            min_width_vertical - 2.0,
-                            self.min_width_horizontal * 2.5 + 1.0,
-                            false,
-                        ),
-                    ]);
+                    let mut polygon = pen_1.get_polygon(
+                        &[
+                            (min_width_vertical, self.min_width_horizontal * 0.5, false),
+                            (
+                                min_width_vertical * 1.5,
+                                self.min_width_horizontal * 1.5,
+                                false,
+                            ),
+                            (
+                                min_width_vertical - 2.0,
+                                self.min_width_horizontal * 2.5 + 1.0,
+                                false,
+                            ),
+                        ],
+                        color,
+                    );
 
                     if start_point.x != end_point.x {
                         polygon
@@ -1342,12 +1403,15 @@ impl Ming {
                         } else {
                             -1.0
                         };
-                        let polygon = pen_2.get_polygon(&[
-                            (rv * (min_width_vertical - 1.0), 0.0, false),
-                            (rv * (min_width_vertical + hane_length), 2.0, false),
-                            (rv * (min_width_vertical + hane_length), 0.0, false),
-                            (min_width_vertical - 1.0, -min_width_vertical, false),
-                        ]);
+                        let polygon = pen_2.get_polygon(
+                            &[
+                                (rv * (min_width_vertical - 1.0), 0.0, false),
+                                (rv * (min_width_vertical + hane_length), 2.0, false),
+                                (rv * (min_width_vertical + hane_length), 0.0, false),
+                                (min_width_vertical - 1.0, -min_width_vertical, false),
+                            ],
+                            color,
+                        );
                         polygons.push(polygon);
                     }
                 }
@@ -1355,12 +1419,15 @@ impl Ming {
         } else if start_point.y == end_point.y && matches!(&head_shape.kind, &EndKind::Temp6) {
             let pen_1 = Pen::new(start_point.x, start_point.y);
             let pen_2 = Pen::new(end_point.x, end_point.y);
-            let polygon = Polygon::new(vec![
-                pen_1.get_point(0.0, -min_width_vertical, false),
-                pen_2.get_point(0.0, -min_width_vertical, false),
-                pen_2.get_point(0.0, min_width_vertical, false),
-                pen_1.get_point(0.0, min_width_vertical, false),
-            ]);
+            let polygon = Polygon::new(
+                vec![
+                    pen_1.get_point(0.0, -min_width_vertical, false),
+                    pen_2.get_point(0.0, -min_width_vertical, false),
+                    pen_2.get_point(0.0, min_width_vertical, false),
+                    pen_1.get_point(0.0, min_width_vertical, false),
+                ],
+                color,
+            );
             polygons.push(polygon);
 
             match &tail_shape.kind {
@@ -1388,7 +1455,7 @@ impl Ming {
                             (0.0, min_width_vertical, false),
                         ]
                     };
-                    let mut polygon = pen.get_polygon(&local_points);
+                    let mut polygon = pen.get_polygon(&local_points, color);
                     if start_point.x > end_point.x {
                         polygon.reverse();
                     }
@@ -1402,12 +1469,15 @@ impl Ming {
                         } else {
                             -1.0
                         };
-                        let polygon = pen.get_polygon(&[
-                            (0.0, rv * (-min_width_vertical), false),
-                            (2.0, rv * (-min_width_vertical - hane_length), false),
-                            (0.0, rv * (-min_width_vertical - hane_length), false),
-                            (-min_width_vertical, rv * (-min_width_vertical), false),
-                        ]);
+                        let polygon = pen.get_polygon(
+                            &[
+                                (0.0, rv * (-min_width_vertical), false),
+                                (2.0, rv * (-min_width_vertical - hane_length), false),
+                                (0.0, rv * (-min_width_vertical - hane_length), false),
+                                (-min_width_vertical, rv * (-min_width_vertical), false),
+                            ],
+                            color,
+                        );
                         polygons.push(polygon);
                     }
                 }
@@ -1426,12 +1496,15 @@ impl Ming {
             pen_1.set_matrix2(cos_radian, sin_radian);
             pen_2.set_matrix2(cos_radian, sin_radian);
 
-            let polygon = Polygon::new(vec![
-                pen_1.get_point(0.0, -self.min_width_horizontal, false),
-                pen_2.get_point(0.0, -self.min_width_horizontal, false),
-                pen_2.get_point(0.0, self.min_width_horizontal, false),
-                pen_1.get_point(0.0, self.min_width_horizontal, false),
-            ]);
+            let polygon = Polygon::new(
+                vec![
+                    pen_1.get_point(0.0, -self.min_width_horizontal, false),
+                    pen_2.get_point(0.0, -self.min_width_horizontal, false),
+                    pen_2.get_point(0.0, self.min_width_horizontal, false),
+                    pen_1.get_point(0.0, self.min_width_horizontal, false),
+                ],
+                color,
+            );
             polygons.push(polygon);
 
             match &tail_shape.kind {
@@ -1439,18 +1512,21 @@ impl Ming {
                 &EndKind::Free => {
                     let triangle_scale =
                         (self.min_width_triangle / self.min_width_horizontal - 1.0) / 4.0 + 1.0;
-                    let mut polygon_2 = pen_2.get_polygon(&[
-                        (0.0, -self.min_width_horizontal, false),
-                        (
-                            -self
-                                .k_adjust_uroko_x
-                                .get(triangle_adjustment)
-                                .unwrap_or(&f64::NAN)
-                                * triangle_scale,
-                            0.0,
-                            false,
-                        ),
-                    ]);
+                    let mut polygon_2 = pen_2.get_polygon(
+                        &[
+                            (0.0, -self.min_width_horizontal, false),
+                            (
+                                -self
+                                    .k_adjust_uroko_x
+                                    .get(triangle_adjustment)
+                                    .unwrap_or(&f64::NAN)
+                                    * triangle_scale,
+                                0.0,
+                                false,
+                            ),
+                        ],
+                        color,
+                    );
                     polygon_2.push(
                         end_point.x
                             - (cos_radian - sin_radian)
@@ -1577,6 +1653,7 @@ impl Ming {
                         stroke_adjustment.vertical_adjustment,
                         0,
                         0,
+                        stroke_line.color,
                     );
                     self.cd_draw_quadratic_bezier(
                         polygons,
@@ -1597,6 +1674,7 @@ impl Ming {
                         stroke_adjustment.flick_adjustment,
                         (stroke_adjustment.vertical_adjustment / 10.0).floor(),
                         stroke_line.tail_shape.opt_2 as f64,
+                        stroke_line.color,
                     );
                 } else {
                     self.cd_draw_line(
@@ -1608,6 +1686,7 @@ impl Ming {
                         stroke_adjustment.vertical_adjustment,
                         stroke_adjustment.triangle_adjustment,
                         stroke_adjustment.foot_adjustment,
+                        stroke_line.color,
                     );
                 }
             }
@@ -1638,6 +1717,7 @@ impl Ming {
                         0.0,
                         stroke_line.head_shape.opt_3 as f64,
                         0.0,
+                        stroke_line.color,
                     );
                     self.cd_draw_quadratic_bezier(
                         polygons,
@@ -1655,6 +1735,7 @@ impl Ming {
                         stroke_adjustment.flick_adjustment,
                         0.0,
                         stroke_line.tail_shape.opt_2 as f64,
+                        stroke_line.color,
                     );
                 } else {
                     let new_tail_shape =
@@ -1678,6 +1759,7 @@ impl Ming {
                         stroke_line.tail_shape.opt_1 as f64,
                         stroke_line.head_shape.opt_3 as f64,
                         stroke_line.tail_shape.opt_2 as f64,
+                        stroke_line.color,
                     );
                 }
             }
@@ -1712,6 +1794,7 @@ impl Ming {
                     stroke_adjustment.vertical_adjustment,
                     0,
                     0,
+                    stroke_line.color,
                 );
                 self.cd_draw_quadratic_bezier(
                     polygons,
@@ -1724,6 +1807,7 @@ impl Ming {
                     0.0,
                     stroke_adjustment.vertical_adjustment,
                     stroke_adjustment.curve_adjustment,
+                    stroke_line.color,
                 );
 
                 let should_skip_tail =
@@ -1755,6 +1839,7 @@ impl Ming {
                         stroke_adjustment.curve_adjustment,
                         opt_2,
                         opt_2,
+                        stroke_line.color,
                     );
                 }
             }
@@ -1799,6 +1884,7 @@ impl Ming {
                     (stroke_line.head_shape.opt_2 + stroke_line.head_shape.opt_3 * 10) as f64,
                     0,
                     0,
+                    stroke_line.color,
                 );
                 self.cd_draw_quadratic_bezier(
                     polygons,
@@ -1811,6 +1897,7 @@ impl Ming {
                     0.0,
                     0.0,
                     0.0,
+                    stroke_line.color,
                 );
 
                 if !(matches!(stroke_line.tail_shape.kind, EndKind::RightUpwardFlick)
@@ -1826,6 +1913,7 @@ impl Ming {
                         0.0,
                         stroke_line.tail_shape.opt_1 as usize, // opt or opt_1?
                         stroke_line.tail_shape.opt_1 as usize, // opt or opt_1?
+                        stroke_line.color,
                     );
                 }
             }
@@ -1852,6 +1940,7 @@ impl Ming {
                         0.0,
                         stroke_line.head_shape.opt_3 as f64,
                         0.0,
+                        stroke_line.color,
                     );
                     self.cd_draw_quadratic_bezier(
                         polygons,
@@ -1869,6 +1958,7 @@ impl Ming {
                         stroke_adjustment.flick_adjustment,
                         0.0,
                         stroke_line.tail_shape.opt_2 as f64,
+                        stroke_line.color,
                     );
                 } else {
                     let tail_shape =
@@ -1892,6 +1982,7 @@ impl Ming {
                         stroke_line.tail_shape.opt_1 as f64,
                         stroke_line.head_shape.opt_3 as f64,
                         stroke_line.tail_shape.opt_2 as f64,
+                        stroke_line.color,
                     );
                 }
             }
@@ -1905,6 +1996,7 @@ impl Ming {
                     stroke_adjustment.vertical_adjustment,
                     0,
                     0,
+                    stroke_line.color,
                 );
                 self.cd_draw_quadratic_bezier(
                     polygons,
@@ -1917,6 +2009,7 @@ impl Ming {
                     stroke_line.tail_shape.opt_1 as f64,
                     (stroke_adjustment.vertical_adjustment / 10.0).floor(),
                     stroke_line.tail_shape.opt_2 as f64,
+                    stroke_line.color,
                 );
             }
             // This arm should be reinterpretated as `Line::Unknown` in previous steps.
@@ -1973,6 +2066,7 @@ mod test {
             6.0,
             0.0,
             0.0,
+            None,
         );
 
         println!("{}", polygons.generate_svg(true));
@@ -1991,6 +2085,7 @@ mod test {
             6.0,
             true,
             0.0,
+            None,
         );
 
         println!("{:#?}", polygons);
@@ -2011,6 +2106,7 @@ mod test {
             0.0,
             0.0,
             false,
+            None,
         );
 
         println!("{:#?}", polygons);
@@ -2033,6 +2129,7 @@ mod test {
             0.0,
             0.0,
             0.0,
+            None,
         );
 
         println!(
@@ -2093,6 +2190,7 @@ mod test {
             0.0,
             0,
             0,
+            None,
         );
         println!(
             "{}",
@@ -2124,6 +2222,7 @@ mod test {
             2.0,
             0,
             0,
+            None,
         );
         println!(
             "{}",
@@ -2155,6 +2254,7 @@ mod test {
             1.0,
             0,
             0,
+            None,
         );
         println!(
             "{}",
@@ -2186,6 +2286,7 @@ mod test {
             0.0,
             0,
             0,
+            None,
         );
         println!(
             "{}",
@@ -2217,6 +2318,7 @@ mod test {
             3.0,
             2,
             0,
+            None,
         );
         println!(
             "{}",
@@ -2248,6 +2350,7 @@ mod test {
             0.0,
             0,
             0,
+            None,
         );
         println!(
             "{}",

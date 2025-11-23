@@ -1,6 +1,6 @@
 use crate::{
     polygon::Polygon,
-    utils::{Point, Vector, normalize},
+    utils::{Point, Rgb, Vector, normalize},
 };
 
 #[derive(Debug)]
@@ -71,7 +71,7 @@ impl Pen {
         self
     }
 
-    pub fn get_polygon<P>(&self, local_points: &[P]) -> Polygon
+    pub fn get_polygon<P>(&self, local_points: &[P], color: Option<Rgb>) -> Polygon
     where
         P: Into<Point> + Copy,
     {
@@ -87,7 +87,7 @@ impl Pen {
             })
             .collect::<Vec<Point>>();
 
-        Polygon::new(local_points)
+        Polygon::new(local_points, color)
     }
 }
 
@@ -161,7 +161,7 @@ mod test {
             (0.0, 10.0, false).into(),
         ];
 
-        let polygon = pen.get_polygon(&local_points);
+        let polygon = pen.get_polygon(&local_points, None);
 
         assert_eq!(
             polygon.points(),

@@ -187,7 +187,7 @@ mod test {
         let mut points = result.left.clone();
         points.extend(result.right.iter().rev().copied());
         let mut polygons = Polygons::new();
-        polygons.push(Polygon::new(points));
+        polygons.push(Polygon::new(points, None));
 
         println!("{}", polygons.generate_svg(true));
     }

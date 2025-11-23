@@ -86,7 +86,13 @@ impl Polygons {
                     }
                     buffer.push_str(&format!(r#"{},{} "#, points_arr[j].x, points_arr[j].y));
                 }
-                buffer.push_str(r#"Z" fill="black" />"#);
+
+                let color = match polygon.color() {
+                    Some(rgb) => rgb.hex(),
+                    None => "black".to_string(),
+                };
+
+                buffer.push_str(&format!(r#"Z" fill="{color}" />"#));
                 buffer.push('\n');
             }
         } else {
@@ -96,15 +102,21 @@ impl Polygons {
                 &self
                     .array
                     .iter()
-                    .map(|points_arr| {
+                    .map(|polygon| {
+                        let fill_info = match polygon.color() {
+                            Some(rgb) => format!(r#" fill="{}""#, rgb.hex()),
+                            None => "".to_string(),
+                        };
+
                         let mut tmp = format!(
-                            r#"<polygon points="{}" />"#,
-                            points_arr
+                            r#"<polygon points="{}"{} />"#,
+                            polygon
                                 .points()
                                 .iter()
                                 .map(|point| format!(r#"{},{} "#, point.x, point.y))
                                 .collect::<Vec<String>>()
-                                .join("")
+                                .join(""),
+                            fill_info
                         );
                         tmp.push('\n');
 

@@ -1,14 +1,15 @@
-use crate::utils::Point;
+use crate::utils::{Point, Rgb};
 
 const PRECISION: f64 = 10.0;
 
 #[derive(Debug, Clone)]
 pub struct Polygon {
     points: Vec<Point>,
+    color: Option<Rgb>,
 }
 
 impl Polygon {
-    pub fn new<P: Into<Point>>(points: Vec<P>) -> Self {
+    pub fn new<P: Into<Point>>(points: Vec<P>, color: Option<Rgb>) -> Self {
         let mut new_points = Vec::with_capacity(points.len());
         for point in points {
             let raw_point: Point = point.into();
@@ -18,7 +19,10 @@ impl Polygon {
                 raw_point.off_curve,
             ));
         }
-        Self { points: new_points }
+        Self {
+            points: new_points,
+            color,
+        }
     }
 
     /// Return a `Polygon` with the given length, the points are
@@ -26,17 +30,30 @@ impl Polygon {
     pub fn new_with_length(length: usize) -> Self {
         let points = vec![(0.0, 0.0, false).into(); length];
 
-        Self { points }
+        Self {
+            points,
+            color: None,
+        }
     }
 
     pub fn new_empty() -> Self {
         let points = Vec::new();
-        Self { points }
+        Self {
+            points,
+            color: None,
+        }
     }
 
     pub fn new_empty_with_capacity(capacity: usize) -> Self {
         let points = Vec::with_capacity(capacity);
-        Self { points }
+        Self {
+            points,
+            color: None,
+        }
+    }
+
+    pub fn set_color(&mut self, red: u8, green: u8, blue: u8) {
+        self.color = Some(Rgb::new(red, green, blue))
     }
 
     pub fn points(&self) -> Vec<Point> {
@@ -225,6 +242,10 @@ impl Polygon {
     fn create_internal_point(x: f64, y: f64, off: Option<bool>) -> Point {
         Point::new(x * PRECISION, y * PRECISION, off)
     }
+
+    pub fn color(&self) -> Option<Rgb> {
+        self.color
+    }
 }
 
 #[cfg(test)]
@@ -244,7 +265,7 @@ mod test {
             (3.0, 4.0, true).into(),
             (5.0, 6.0).into(), // off_curve is default to false
         ];
-        let polygon_from_points = Polygon::new(points);
+        let polygon_from_points = Polygon::new(points, None);
         assert_eq!(polygon_len3.len(), 3);
         let point_0 = polygon_from_points.get(0);
         assert_eq!(point_0, Some(Point::new(1.0, 2.0, Some(false))));
@@ -285,7 +306,7 @@ mod test {
     #[test]
     fn test_polygon_array_access() {
         let points = vec![(1.0, 2.0, false), (3.0, 4.0, true), (5.0, 6.0, false)];
-        let polygon = Polygon::new(points);
+        let polygon = Polygon::new(points, None);
         assert_eq!(polygon.get(0), Some(Point::new(1.0, 2.0, Some(false))));
         assert_eq!(polygon.get(1), Some(Point::new(3.0, 4.0, Some(true))));
         assert_eq!(polygon.get(2), Some(Point::new(5.0, 6.0, Some(false))));
@@ -303,8 +324,10 @@ mod test {
 
     #[test]
     fn test_polygon_modifications() {
-        let mut polygon =
-            Polygon::new(vec![(1.0, 2.0, false), (3.0, 4.0, true), (5.0, 6.0, false)]);
+        let mut polygon = Polygon::new(
+            vec![(1.0, 2.0, false), (3.0, 4.0, true), (5.0, 6.0, false)],
+            None,
+        );
 
         polygon.reverse();
         assert_eq!(polygon.get(0), Some(Point::new(5.0, 6.0, Some(false))));
@@ -325,8 +348,8 @@ mod test {
 
     #[test]
     fn test_polygon_concat() {
-        let mut polygon_1 = Polygon::new(vec![(1.0, 2.0, false), (3.0, 4.0, true)]);
-        let polygon_2 = Polygon::new(vec![(5.0, 6.0, false), (7.0, 8.0, true)]);
+        let mut polygon_1 = Polygon::new(vec![(1.0, 2.0, false), (3.0, 4.0, true)], None);
+        let polygon_2 = Polygon::new(vec![(5.0, 6.0, false), (7.0, 8.0, true)], None);
 
         polygon_1.concat(polygon_2.clone());
         assert_eq!(polygon_1.len(), 4);
@@ -341,8 +364,10 @@ mod test {
 
     #[test]
     fn test_polygon_transformations() {
-        let mut polygon_1 =
-            Polygon::new(vec![(1.0, 2.0, false), (3.0, 4.0, true), (5.0, 6.0, false)]);
+        let mut polygon_1 = Polygon::new(
+            vec![(1.0, 2.0, false), (3.0, 4.0, true), (5.0, 6.0, false)],
+            None,
+        );
 
         polygon_1.translate(10.0, 20.0);
         assert_eq!(polygon_1.get(0), Some(Point::new(11.0, 22.0, Some(false))));
@@ -365,7 +390,7 @@ mod test {
             Some(Point::new(-15.0, -26.0, Some(false)))
         );
 
-        let mut polygon_2 = Polygon::new(vec![(1.0, 0.0, false), (0.0, 1.0, false)]);
+        let mut polygon_2 = Polygon::new(vec![(1.0, 0.0, false), (0.0, 1.0, false)], None);
         polygon_2.rotate_90();
         assert_eq!(polygon_2.get(0), Some(Point::new(-0.0, 1.0, Some(false))));
         assert_eq!(polygon_2.get(1), Some(Point::new(-1.0, 0.0, Some(false))));
@@ -381,7 +406,7 @@ mod test {
 
     #[test]
     fn test_polygon_floor() {
-        let mut polygon = Polygon::new(vec![(1.7, 2.3, false), (3.1, 4.9, true)]);
+        let mut polygon = Polygon::new(vec![(1.7, 2.3, false), (3.1, 4.9, true)], None);
 
         polygon.floor();
 

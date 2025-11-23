@@ -550,6 +550,19 @@ where
         && (control_point_1.y - control_point_2.y).abs() <= EPSILON
 }
 
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub struct Rgb(u8, u8, u8);
+
+impl Rgb {
+    pub(crate) fn new(red: u8, green: u8, blue: u8) -> Self {
+        Rgb(red, green, blue)
+    }
+
+    pub(crate) fn hex(&self) -> String {
+        format!("#{:X}{:X}{:X}", self.0, self.1, self.2,)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -623,5 +636,11 @@ mod test {
         let num = 1.23456789;
         let result = round(num, 2);
         assert_eq!(result, 1.23);
+    }
+
+    #[test]
+    fn test_rgb() {
+        let color = Rgb::new(34, 123, 145);
+        println!("{}", color.hex());
     }
 }

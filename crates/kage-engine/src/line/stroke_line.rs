@@ -1,4 +1,4 @@
-use crate::utils::Point;
+use crate::utils::{Point, Rgb};
 
 pub(crate) fn stretch_numeric(
     dest_pivot: f64,
@@ -221,6 +221,7 @@ pub struct StrokeLineType {
     pub(crate) point_2: Point,
     pub(crate) point_3: Point,
     pub(crate) point_4: Point,
+    pub(crate) color: Option<Rgb>,
 }
 
 impl StrokeLineType {
@@ -236,6 +237,7 @@ impl StrokeLineType {
         field_9: f64,
         field_10: f64,
         field_11: f64,
+        color: Option<Rgb>,
     ) -> Self {
         let stroke_type = StrokeType::new(field_1);
         let head_shape = EndType::new(field_2);
@@ -253,6 +255,7 @@ impl StrokeLineType {
             point_2,
             point_3,
             point_4,
+            color,
         }
     }
 
@@ -482,8 +485,9 @@ mod test {
 
     #[test]
     fn test_construction() {
-        let stroke1 =
-            StrokeLineType::new(1.0, 0.0, 2.0, 32.0, 31.0, 176.0, 31.0, 0.0, 0.0, 0.0, 0.0);
+        let stroke1 = StrokeLineType::new(
+            1.0, 0.0, 2.0, 32.0, 31.0, 176.0, 31.0, 0.0, 0.0, 0.0, 0.0, None,
+        );
 
         assert_eq!(
             stroke1,
@@ -529,6 +533,7 @@ mod test {
                     y: 0.0,
                     off_curve: None,
                 },
+                color: None,
             }
         );
 
@@ -568,7 +573,7 @@ mod test {
     #[test]
     fn test_different_stroke_type() {
         let stroke2 = StrokeLineType::new(
-            2.0, 22.0, 7.0, 176.0, 31.0, 170.0, 43.0, 156.0, 63.0, 0.0, 0.0,
+            2.0, 22.0, 7.0, 176.0, 31.0, 170.0, 43.0, 156.0, 63.0, 0.0, 0.0, None,
         );
 
         assert_eq!(stroke2.stroke_type.kind, StrokeKind::Curve);
@@ -605,7 +610,7 @@ mod test {
         // );
 
         let stroke3 = StrokeLineType::new(
-            3.0, 0.0, 0.0, 100.0, 100.0, 150.0, 50.0, 200.0, 100.0, 250.0, 150.0,
+            3.0, 0.0, 0.0, 100.0, 100.0, 150.0, 50.0, 200.0, 100.0, 250.0, 150.0, None,
         );
 
         assert_eq!(stroke3.stroke_type.kind, StrokeKind::BendLine);
@@ -670,8 +675,9 @@ mod test {
 
     #[test]
     fn test_stroke_stretch() {
-        let mut stroke6 =
-            StrokeLineType::new(1.0, 0.0, 0.0, 50.0, 50.0, 100.0, 100.0, 0.0, 0.0, 0.0, 0.0);
+        let mut stroke6 = StrokeLineType::new(
+            1.0, 0.0, 0.0, 50.0, 50.0, 100.0, 100.0, 0.0, 0.0, 0.0, 0.0, None,
+        );
 
         assert_eq!(
             stroke6.get_box(),
@@ -710,7 +716,8 @@ mod test {
 
     #[test]
     fn test_edge_case() {
-        let stroke7 = StrokeLineType::new(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+        let stroke7 =
+            StrokeLineType::new(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, None);
 
         // assert_eq!(stroke7.get_control_segments(), vec![]);
         assert_eq!(
@@ -733,7 +740,7 @@ mod test {
     #[test]
     fn test_large_number() {
         let stroke8 = StrokeLineType::new(
-            1.0, 0.0, 0.0, 1000.0, 1000.0, 2000.0, 2000.0, 0.0, 0.0, 0.0, 0.0,
+            1.0, 0.0, 0.0, 1000.0, 1000.0, 2000.0, 2000.0, 0.0, 0.0, 0.0, 0.0, None,
         );
 
         assert_eq!(
@@ -756,7 +763,7 @@ mod test {
     #[test]
     fn test_negtive_number() {
         let stroke9 = StrokeLineType::new(
-            1.0, 0.0, 0.0, -100.0, -100.0, -50.0, -50.0, 0.0, 0.0, 0.0, 0.0,
+            1.0, 0.0, 0.0, -100.0, -100.0, -50.0, -50.0, 0.0, 0.0, 0.0, 0.0, None,
         );
 
         assert_eq!(
