@@ -1,6 +1,6 @@
 # Kage-rs
 
-An experimental port of the Kage engine to Rust. This project is still in a very early stage.
+An experimental port of the [Kage engine](https://github.com/kamichikoichi/kage-engine) to Rust. This project is still in a very early stage.
 
 ## Example
 
