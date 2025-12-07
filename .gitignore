@@ -1,10 +1,10 @@
 /target
 /results*
 /test.svg
-/**/examples/test*.rs
+**/examples/test*.rs
 /dump*
 /data
-/*/**/*.pdf
-/*/**/.DS_Store
-/*/**/*.sql
+**/*.pdf
+**/.DS_Store
+**/*.sql
 /crates/gw-search

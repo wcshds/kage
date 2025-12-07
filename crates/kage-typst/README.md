@@ -11,7 +11,7 @@ rustup target add wasm32-unknown-unknown
 Build the WebAssembly module.
 
 ```bash
-cargo build --release -p kage-typst --target wasm32-unknown-unknown
+cargo build --release --package kage-typst --target wasm32-unknown-unknown
 cp ./target/wasm32-unknown-unknown/release/kage_typst.wasm ./crates/kage-typst/
 ```
 
