@@ -6,10 +6,7 @@ use crate::{
         split_quadratic_bezier_curve,
     },
     font::stroke_adjustment::AdjustedStroke,
-    line::{
-        special_line::{SpecialLineType, TransformType},
-        stroke_line::{EndKind, EndType, StrokeKind, StrokeLineType},
-    },
+    line::stroke_line::{EndKind, EndType, StrokeKind, StrokeLineType},
     pen::Pen,
     polygon::Polygon,
     polygons::Polygons,
@@ -18,7 +15,7 @@ use crate::{
 
 pub struct Ming {
     /// must divide 1000
-    pub k_rate: usize,
+    pub sample_step: usize,
     /// Half of the width of mincho-style horizontal (thinner) strokes.
     /// origin name: kMinWidthY
     pub min_width_horizontal: f64,
@@ -31,8 +28,6 @@ pub struct Ming {
     /// Half of the width of gothic-style strokes.
     /// Also used to determine the size of mincho's ornamental elements.
     pub width: f64,
-    /// Size of kakato in gothic.
-    pub square_terminal: f64,
     /// Width at the end of 右払い relative to `2 * kMinWidthT`.
     pub right_sweep_end_scale_factor: f64,
     /// Size of the curve at the end of 左ハネ, and at the middle of 折れ and 乙線 strokes.
@@ -50,36 +45,65 @@ pub struct Ming {
     pub adjust_foot_right: Vec<f64>,
     /// Width of the collision box below カカト for shortening adjustment.
     /// check area width
-    pub k_adjust_kakato_range_x: f64,
+    pub k_adjust_foot_range_x: f64,
     /// Height of the collision box below カカト for each shortening adjustment level (0 to 3).
     /// 3 steps of checking
-    pub k_adjust_kakato_range_y: Vec<f64>,
+    pub k_adjust_foot_range_y: Vec<f64>,
     /// f64 of カカト shortening levels. Must be set to 3.
     /// f64 of steps
-    pub k_adjust_kakato_step: f64,
+    pub k_adjust_foot_step: f64,
     /// Size of ウロコ at the 開放 end of mincho-style horizontal strokes for each shrinking level (0 to max({@link kAdjustUrokoLengthStep}, {@link kAdjustUroko2Step})).
     /// for UROKO adjustment 000,100,200,300
-    pub k_adjust_uroko_x: Vec<f64>,
+    pub k_adjust_triangle_x: Vec<f64>,
     /// Size of ウロコ at the 開放 end of mincho-style horizontal strokes for each shrinking level (0 to max({@link kAdjustUrokoLengthStep}, {@link kAdjustUroko2Step})).
     /// for UROKO adjustment 000,100,200,300
-    pub k_adjust_uroko_y: Vec<f64>,
+    pub k_adjust_triangle_y: Vec<f64>,
     /// Threshold length of horizontal strokes for shrinking its ウロコ for each adjustment level ({@link kAdjustUrokoLengthStep} to 1).
     /// length for checking
-    pub k_adjust_uroko_length: Vec<f64>,
+    pub k_adjust_triangle_length: Vec<f64>,
     /// f64 of ウロコ shrinking levels by adjustment using collision detection.
     /// f64 of steps
-    pub k_adjust_uroko_length_step: f64,
+    pub k_adjust_triangle_length_step: f64,
     /// Size of the collision box to the left of ウロコ at the 開放 end of mincho-style horizontal strokes for each shrinking adjustment level ({@link kAdjustUrokoLengthStep} to 1).
     /// check for crossing. corresponds to length
-    pub k_adjust_uroko_line: Vec<f64>,
+    pub k_adjust_triangle_line: Vec<f64>,
     /// f64 of ウロコ shrinking levels by adjustment based on the density of horizontal strokes.
-    pub k_adjust_uroko2_step: f64,
+    pub k_adjust_triangle2_step: f64,
     /// Parameter for shrinking adjustment of ウロコ based on the density of horizontal strokes.
-    pub k_adjust_uroko2_length: f64,
+    pub k_adjust_triangle2_length: f64,
     /// Parameter for thinning adjustment of mincho-style vertical strokes.
-    pub k_adjust_tate_step: f64,
+    pub k_adjust_vertical_step: f64,
     /// Parameter for thinning adjustment of the latter half of mincho-style 折れ strokes.
-    pub k_adjust_mage_step: f64,
+    pub k_adjust_curve_step: f64,
+}
+
+impl Ming {
+    pub fn new(use_curve: bool) -> Self {
+        Self {
+            sample_step: 100,
+            min_width_horizontal: 2.0,
+            min_width_triangle: 2.0,
+            min_width_vertical: 6.0,
+            width: 5.0,
+            right_sweep_end_scale_factor: 1.1,
+            curve_size: 10.0,
+            use_curve,
+            adjust_foot_left: vec![14.0, 9.0, 5.0, 2.0, 0.0],
+            adjust_foot_right: vec![8.0, 6.0, 4.0, 2.0],
+            k_adjust_foot_range_x: 20.0,
+            k_adjust_foot_range_y: vec![1.0, 19.0, 24.0, 30.0],
+            k_adjust_foot_step: 3.0,
+            k_adjust_triangle_x: vec![24.0, 20.0, 16.0, 12.0],
+            k_adjust_triangle_y: vec![12.0, 11.0, 9.0, 8.0],
+            k_adjust_triangle_length: vec![22.0, 36.0, 50.0],
+            k_adjust_triangle_length_step: 3.0,
+            k_adjust_triangle_line: vec![22.0, 26.0, 30.0],
+            k_adjust_triangle2_step: 3.0,
+            k_adjust_triangle2_length: 40.0,
+            k_adjust_vertical_step: 4.0,
+            k_adjust_curve_step: 5.0,
+        }
+    }
 }
 
 impl Ming {
@@ -250,7 +274,7 @@ impl Ming {
                 control_point_1,
                 control_point_2,
                 end_point,
-                self.k_rate,
+                self.sample_step,
                 |progress| {
                     let mut width_delta = (&width_delta_func)(progress);
 
@@ -726,7 +750,7 @@ impl Ming {
         }
 
         let mut end_point = end_point;
-        let mut delta_2 = None;
+        let delta_2;
         match &tail_shape.kind {
             &EndKind::Free
             | &EndKind::Temp1
@@ -1463,7 +1487,7 @@ impl Ming {
 
                     if matches!(&tail_shape.kind, &EndKind::RightUpwardFlick) {
                         let hane_length = self.width
-                            * (4.0 * (1.0 - vertical_adjustment / self.k_adjust_mage_step) + 1.0);
+                            * (4.0 * (1.0 - vertical_adjustment / self.k_adjust_curve_step) + 1.0);
                         let rv = if start_point.x < end_point.x {
                             1.0
                         } else {
@@ -1517,7 +1541,7 @@ impl Ming {
                             (0.0, -self.min_width_horizontal, false),
                             (
                                 -self
-                                    .k_adjust_uroko_x
+                                    .k_adjust_triangle_x
                                     .get(triangle_adjustment)
                                     .unwrap_or(&f64::NAN)
                                     * triangle_scale,
@@ -1531,7 +1555,7 @@ impl Ming {
                         end_point.x
                             - (cos_radian - sin_radian)
                                 * self
-                                    .k_adjust_uroko_x
+                                    .k_adjust_triangle_x
                                     .get(triangle_adjustment)
                                     .unwrap_or(&f64::NAN)
                                 * triangle_scale
@@ -1539,7 +1563,7 @@ impl Ming {
                         end_point.y
                             - (sin_radian + cos_radian)
                                 * self
-                                    .k_adjust_uroko_y
+                                    .k_adjust_triangle_y
                                     .get(triangle_adjustment)
                                     .unwrap_or(&f64::NAN)
                                 * triangle_scale,
@@ -1555,78 +1579,6 @@ impl Ming {
 
 // index.ts
 impl Ming {
-    fn select_polygons_rect<P1, P2>(
-        polygons: &mut Polygons,
-        box_diag_1: P1,
-        box_diag_2: P2,
-    ) -> Vec<&mut Polygon>
-    where
-        P1: Into<Point>,
-        P2: Into<Point>,
-    {
-        let box_diag_1 = box_diag_1.into();
-        let box_diag_2 = box_diag_2.into();
-
-        polygons
-            .array_mut()
-            .filter(|polygon| {
-                polygon.points().iter().all(|point| {
-                    box_diag_1.x <= point.x
-                        && point.x <= box_diag_2.x
-                        && box_diag_1.y <= point.y
-                        && point.y <= box_diag_2.y
-                })
-            })
-            .collect()
-    }
-
-    pub(crate) fn df_transform(&self, polygons: &mut Polygons, line_type: SpecialLineType) {
-        let polygon_vec =
-            Ming::select_polygons_rect(polygons, line_type.box_diag_1, line_type.box_diag_2);
-
-        match line_type.transform_type {
-            TransformType::HorizontalFlip => {
-                let [dx, dy] = [line_type.box_diag_1.x + line_type.box_diag_2.x, 0.0];
-                for polygon in polygon_vec {
-                    polygon.reflect_x().translate(dx, dy).floor();
-                }
-            }
-            TransformType::VerticalFlip => {
-                let [dx, dy] = [0.0, line_type.box_diag_1.y + line_type.box_diag_2.y];
-                for polygon in polygon_vec {
-                    polygon.reflect_y().translate(dx, dy).floor();
-                }
-            }
-            TransformType::Rotate90 => {
-                let [dx, dy] = [
-                    line_type.box_diag_1.x + line_type.box_diag_2.y,
-                    line_type.box_diag_1.y - line_type.box_diag_1.x,
-                ];
-                for polygon in polygon_vec {
-                    polygon.rotate_90().translate(dx, dy).floor();
-                }
-            }
-            TransformType::Rotate180 => {
-                let [dx, dy] = [
-                    line_type.box_diag_1.x + line_type.box_diag_2.x,
-                    line_type.box_diag_1.y + line_type.box_diag_2.y,
-                ];
-                for polygon in polygon_vec {
-                    polygon.rotate_180().translate(dx, dy).floor();
-                }
-            }
-            TransformType::Rotate270 => {
-                let [dx, dy] = [
-                    line_type.box_diag_1.x - line_type.box_diag_1.y,
-                    line_type.box_diag_2.y + line_type.box_diag_1.x,
-                ];
-                for polygon in polygon_vec {
-                    polygon.rotate_270().translate(dx, dy).floor();
-                }
-            }
-        }
-    }
-
     pub fn df_draw_font(
         &self,
         polygons: &mut Polygons,
@@ -1662,9 +1614,9 @@ impl Ming {
                         (
                             stroke_line.point_2.x
                                 - self.curve_size
-                                    * (((self.k_adjust_tate_step + 4.0)
+                                    * (((self.k_adjust_vertical_step + 4.0)
                                         - stroke_adjustment.vertical_adjustment)
-                                        / (self.k_adjust_tate_step + 4.0)),
+                                        / (self.k_adjust_vertical_step + 4.0)),
                             stroke_line.point_2.y,
                         )
                             .into(),
@@ -2024,29 +1976,28 @@ mod test {
 
     fn init(use_curve: bool) -> Ming {
         Ming {
-            k_rate: 100,
+            sample_step: 100,
             min_width_horizontal: 2.0,
             min_width_triangle: 2.0,
             min_width_vertical: 6.0,
             width: 5.0,
-            square_terminal: 3.0,
             right_sweep_end_scale_factor: 1.1,
             curve_size: 10.0,
             use_curve,
             adjust_foot_left: vec![14.0, 9.0, 5.0, 2.0, 0.0],
             adjust_foot_right: vec![8.0, 6.0, 4.0, 2.0],
-            k_adjust_kakato_range_x: 20.0,
-            k_adjust_kakato_range_y: vec![1.0, 19.0, 24.0, 30.0],
-            k_adjust_kakato_step: 3.0,
-            k_adjust_uroko_x: vec![24.0, 20.0, 16.0, 12.0],
-            k_adjust_uroko_y: vec![12.0, 11.0, 9.0, 8.0],
-            k_adjust_uroko_length: vec![22.0, 36.0, 50.0],
-            k_adjust_uroko_length_step: 3.0,
-            k_adjust_uroko_line: vec![22.0, 26.0, 30.0],
-            k_adjust_uroko2_step: 3.0,
-            k_adjust_uroko2_length: 40.0,
-            k_adjust_tate_step: 4.0,
-            k_adjust_mage_step: 5.0,
+            k_adjust_foot_range_x: 20.0,
+            k_adjust_foot_range_y: vec![1.0, 19.0, 24.0, 30.0],
+            k_adjust_foot_step: 3.0,
+            k_adjust_triangle_x: vec![24.0, 20.0, 16.0, 12.0],
+            k_adjust_triangle_y: vec![12.0, 11.0, 9.0, 8.0],
+            k_adjust_triangle_length: vec![22.0, 36.0, 50.0],
+            k_adjust_triangle_length_step: 3.0,
+            k_adjust_triangle_line: vec![22.0, 26.0, 30.0],
+            k_adjust_triangle2_step: 3.0,
+            k_adjust_triangle2_length: 40.0,
+            k_adjust_vertical_step: 4.0,
+            k_adjust_curve_step: 5.0,
         }
     }
 
@@ -2150,29 +2101,28 @@ mod test {
 
     fn init_2(use_curve: bool) -> Ming {
         Ming {
-            k_rate: 100,
+            sample_step: 100,
             min_width_horizontal: 16.0,
             min_width_triangle: 18.0,
             min_width_vertical: 20.0,
             width: 4.0,
-            square_terminal: 3.0,
             right_sweep_end_scale_factor: 1.1,
             curve_size: 10.0,
             use_curve,
             adjust_foot_left: vec![0.0, 2.0, 4.0, 6.0, 8.0],
             adjust_foot_right: vec![0.0, 3.0, 6.0, 9.0, 12.0],
-            k_adjust_kakato_range_x: 20.0,
-            k_adjust_kakato_range_y: vec![1.0, 19.0, 24.0, 30.0],
-            k_adjust_kakato_step: 3.0,
-            k_adjust_uroko_x: vec![0.0, 6.0, 12.0, 18.0],
-            k_adjust_uroko_y: vec![0.0, 5.0, 10.0, 15.0],
-            k_adjust_uroko_length: vec![22.0, 36.0, 50.0],
-            k_adjust_uroko_length_step: 3.0,
-            k_adjust_uroko_line: vec![22.0, 26.0, 30.0],
-            k_adjust_uroko2_step: 3.0,
-            k_adjust_uroko2_length: 40.0,
-            k_adjust_tate_step: 4.0,
-            k_adjust_mage_step: 8.0,
+            k_adjust_foot_range_x: 20.0,
+            k_adjust_foot_range_y: vec![1.0, 19.0, 24.0, 30.0],
+            k_adjust_foot_step: 3.0,
+            k_adjust_triangle_x: vec![0.0, 6.0, 12.0, 18.0],
+            k_adjust_triangle_y: vec![0.0, 5.0, 10.0, 15.0],
+            k_adjust_triangle_length: vec![22.0, 36.0, 50.0],
+            k_adjust_triangle_length_step: 3.0,
+            k_adjust_triangle_line: vec![22.0, 26.0, 30.0],
+            k_adjust_triangle2_step: 3.0,
+            k_adjust_triangle2_length: 40.0,
+            k_adjust_vertical_step: 4.0,
+            k_adjust_curve_step: 8.0,
         }
     }
 

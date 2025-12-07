@@ -48,7 +48,7 @@ pub(crate) fn generate_fatten_curve<P1, P2, P3, P4>(
     control_point_1: P2,
     control_point_2: P3,
     end_point: P4,
-    k_rate: usize,
+    sample_step: usize,
     width_func: impl Fn(f64) -> f64,
 ) -> FattenResult
 where
@@ -63,8 +63,8 @@ where
     let end_point = end_point.into();
 
     let mut result = FattenResult {
-        left: Vec::with_capacity(1000 / k_rate + 1),
-        right: Vec::with_capacity(1000 / k_rate + 1),
+        left: Vec::with_capacity(1000 / sample_step + 1),
+        right: Vec::with_capacity(1000 / sample_step + 1),
     };
 
     let curve_sampler = if is_quadratic(control_point_1, control_point_2) {
@@ -82,7 +82,7 @@ where
         }
     };
 
-    for step in (0..=1000).step_by(k_rate) {
+    for step in (0..=1000).step_by(sample_step) {
         let progress = step as f64 / 1000.0;
 
         let sampled_point = curve_sampler.sample(progress);

@@ -1,6 +1,6 @@
 use crate::{
     component::Components,
-    font::{ming::Ming, stroke_adjustment::StrokeAdjustmentTrait},
+    font::{FontWrapper, Typeface},
     line::{
         Line,
         stroke_line::{self, StrokeLineType},
@@ -12,45 +12,19 @@ use core::f64;
 
 pub struct Kage {
     pub components: Components,
-    pub font: Ming,
+    pub font: FontWrapper,
 }
 
 impl Kage {
-    pub fn new(use_curve: bool) -> Self {
-        let font = Ming {
-            k_rate: 100,
-            min_width_horizontal: 2.0,
-            min_width_triangle: 2.0,
-            min_width_vertical: 6.0,
-            width: 5.0,
-            square_terminal: 3.0,
-            right_sweep_end_scale_factor: 1.1,
-            curve_size: 10.0,
-            use_curve,
-            adjust_foot_left: vec![14.0, 9.0, 5.0, 2.0, 0.0],
-            adjust_foot_right: vec![8.0, 6.0, 4.0, 2.0],
-            k_adjust_kakato_range_x: 20.0,
-            k_adjust_kakato_range_y: vec![1.0, 19.0, 24.0, 30.0],
-            k_adjust_kakato_step: 3.0,
-            k_adjust_uroko_x: vec![24.0, 20.0, 16.0, 12.0],
-            k_adjust_uroko_y: vec![12.0, 11.0, 9.0, 8.0],
-            k_adjust_uroko_length: vec![22.0, 36.0, 50.0],
-            k_adjust_uroko_length_step: 3.0,
-            k_adjust_uroko_line: vec![22.0, 26.0, 30.0],
-            k_adjust_uroko2_step: 3.0,
-            k_adjust_uroko2_length: 40.0,
-            k_adjust_tate_step: 4.0,
-            k_adjust_mage_step: 5.0,
-        };
-
+    pub fn new(typeface: Typeface, use_curve: bool) -> Self {
         Self {
             components: Components::new(),
-            font,
+            font: FontWrapper::new(typeface, use_curve),
         }
     }
 
     pub fn set_use_curve(&mut self, use_curve: bool) {
-        self.font.use_curve = use_curve;
+        self.font.set_use_curve(use_curve);
     }
 
     pub fn make_glyph_with_component_name(&self, polygons: &mut Polygons, component_name: &str) {
@@ -69,30 +43,8 @@ impl Kage {
 
         let lines = self.get_each_expanded_line(data);
 
-        let stroke_line_type_arr: Vec<_> = lines
-            .iter()
-            .filter_map(|each| match each {
-                Line::StrokeLine(line_type) => Some(*line_type),
-                _ => None,
-            })
-            .collect();
-
-        let stroke_refs: Vec<_> = stroke_line_type_arr.iter().collect();
-        let stroke_adjustment_vec = self.font.adjust_strokes(&stroke_refs);
-        let mut stroke_adjustment_iter = stroke_adjustment_vec.iter().map(|each| each.1);
-
-        for line in lines {
-            match line {
-                Line::SpecialLine(special_line_type) => {
-                    self.font.df_transform(polygons, special_line_type)
-                }
-                Line::StrokeLine(stroke_line_type) => self.font.df_draw_font(
-                    polygons,
-                    stroke_line_type,
-                    stroke_adjustment_iter.next().unwrap(),
-                ),
-                _ => continue,
-            }
+        for drawer in self.font.get_drawers(&lines) {
+            drawer(polygons);
         }
     }
 

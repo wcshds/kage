@@ -5,7 +5,7 @@ use crate::{
 
 #[derive(Debug)]
 pub struct Pen {
-    global_point: Point,
+    pub(crate) global_point: Point,
     cos_theta: f64,
     sin_theta: f64,
 }

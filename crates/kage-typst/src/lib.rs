@@ -1,4 +1,4 @@
-use kage_engine::{kage::Kage, polygons::Polygons};
+use kage_engine::{Typeface, kage::Kage, polygons::Polygons};
 use wasm_minimal_protocol::*;
 
 initiate_protocol!();
@@ -9,7 +9,7 @@ pub fn kage_to_svg(component_data: &[u8], name: &[u8], use_curve: &[u8]) -> Vec<
     let name = unsafe { core::str::from_utf8_unchecked(name) };
     let use_curve: bool = unsafe { core::str::from_utf8_unchecked(use_curve).parse().unwrap() };
 
-    let mut kage = Kage::new(use_curve);
+    let mut kage = Kage::new(Typeface::Ming, use_curve);
     let mut polygons = Polygons::new();
 
     for line in component_data.trim().split("\n") {

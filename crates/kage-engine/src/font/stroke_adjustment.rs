@@ -187,12 +187,12 @@ impl StrokeAdjustmentTrait for Ming {
                         if target_idx != other_idx && !(x1 + 1.0 > other_x2 || x2 - 1.0 < other_x1)
                         {
                             let dy = (y - other_y).abs();
-                            if dy.round() < self.min_width_vertical * self.k_adjust_mage_step {
+                            if dy.round() < self.min_width_vertical * self.k_adjust_curve_step {
                                 let adj = &mut adjusted[target_idx].1;
-                                adj.curve_adjustment += self.k_adjust_mage_step
+                                adj.curve_adjustment += self.k_adjust_curve_step
                                     - (dy / self.min_width_vertical).floor();
-                                if adj.curve_adjustment > self.k_adjust_mage_step {
-                                    adj.curve_adjustment = self.k_adjust_mage_step;
+                                if adj.curve_adjustment > self.k_adjust_curve_step {
+                                    adj.curve_adjustment = self.k_adjust_curve_step;
                                 }
                             }
                         }
@@ -220,15 +220,15 @@ impl StrokeAdjustmentTrait for Ming {
                 for &(other_idx, other_x, other_y1, other_y2) in &vert_segments {
                     if idx != other_idx && !(y1 + 1.0 > other_y2 || y2 - 1.0 < other_y1) {
                         let dx = (x - other_x).abs();
-                        if dx.round() < self.min_width_vertical * self.k_adjust_tate_step {
+                        if dx.round() < self.min_width_vertical * self.k_adjust_vertical_step {
                             let adj = &mut adjusted[idx].1;
                             adj.vertical_adjustment +=
-                                self.k_adjust_tate_step - (dx / self.min_width_vertical).floor();
-                            if adj.vertical_adjustment > self.k_adjust_tate_step
-                                || (adj.vertical_adjustment == self.k_adjust_tate_step
+                                self.k_adjust_vertical_step - (dx / self.min_width_vertical).floor();
+                            if adj.vertical_adjustment > self.k_adjust_vertical_step
+                                || (adj.vertical_adjustment == self.k_adjust_vertical_step
                                     && (head_shape.opt_1 != 0 || head_shape.base != 0))
                             {
-                                adj.vertical_adjustment = self.k_adjust_tate_step;
+                                adj.vertical_adjustment = self.k_adjust_vertical_step;
                             }
                         }
                     }
@@ -238,7 +238,7 @@ impl StrokeAdjustmentTrait for Ming {
 
         // adjust kakato
         {
-            let step = self.k_adjust_kakato_step as usize;
+            let step = self.k_adjust_foot_step as usize;
             for idx in 0..adjusted.len() {
                 let stroke = adjusted[idx].0;
                 if stroke.stroke_type.base == 1
@@ -249,7 +249,7 @@ impl StrokeAdjustmentTrait for Ming {
                     let mut foot = None;
 
                     for k in 0..step {
-                        let y_range_next = self.k_adjust_kakato_range_y[k + 1];
+                        let y_range_next = self.k_adjust_foot_range_y[k + 1];
                         let collide = (0..adjusted.len()).any(|other_idx| {
                             if idx == other_idx {
                                 return false;
@@ -258,13 +258,13 @@ impl StrokeAdjustmentTrait for Ming {
                             crosses_box(
                                 stroke2,
                                 (
-                                    stroke.point_2.x - self.k_adjust_kakato_range_x / 2.0,
-                                    stroke.point_2.y + self.k_adjust_kakato_range_y[k],
+                                    stroke.point_2.x - self.k_adjust_foot_range_x / 2.0,
+                                    stroke.point_2.y + self.k_adjust_foot_range_y[k],
                                     None,
                                 )
                                     .into(),
                                 (
-                                    stroke.point_2.x + self.k_adjust_kakato_range_x / 2.0,
+                                    stroke.point_2.x + self.k_adjust_foot_range_x / 2.0,
                                     stroke.point_2.y + y_range_next,
                                     None,
                                 )
@@ -292,7 +292,7 @@ impl StrokeAdjustmentTrait for Ming {
 
         // adjust uroko
         {
-            let length_steps = self.k_adjust_uroko_length_step as usize;
+            let length_steps = self.k_adjust_triangle_length_step as usize;
             for idx in 0..adjusted.len() {
                 let stroke = adjusted[idx].0;
                 if stroke.stroke_type.base == 1
@@ -317,9 +317,9 @@ impl StrokeAdjustmentTrait for Ming {
                         };
 
                         let tx =
-                            stroke.point_2.x - self.k_adjust_uroko_line[k] * cosrad - 0.5 * sinrad;
+                            stroke.point_2.x - self.k_adjust_triangle_line[k] * cosrad - 0.5 * sinrad;
                         let ty =
-                            stroke.point_2.y - self.k_adjust_uroko_line[k] * sinrad - 0.5 * cosrad;
+                            stroke.point_2.y - self.k_adjust_triangle_line[k] * sinrad - 0.5 * cosrad;
 
                         let tlen = if stroke.point_1.y == stroke.point_2.y {
                             stroke.point_2.x - stroke.point_1.x
@@ -337,8 +337,8 @@ impl StrokeAdjustmentTrait for Ming {
                                 )
                         });
 
-                        if tlen.round() < self.k_adjust_uroko_length[k] || hit {
-                            new_tri = self.k_adjust_uroko_length_step as usize - k;
+                        if tlen.round() < self.k_adjust_triangle_length[k] || hit {
+                            new_tri = self.k_adjust_triangle_length_step as usize - k;
                             break;
                         }
                     }
@@ -385,15 +385,15 @@ impl StrokeAdjustmentTrait for Ming {
                     for &(other_idx, _, other_y, other_x1, other_x2) in &hori_segments {
                         if idx != other_idx && !(x1 + 1.0 > other_x2 || x2 - 1.0 < other_x1) {
                             let dy = (y - other_y).abs();
-                            if dy.round() < self.k_adjust_uroko2_length {
-                                let delta = self.k_adjust_uroko2_length - dy;
+                            if dy.round() < self.k_adjust_triangle2_length {
+                                let delta = self.k_adjust_triangle2_length - dy;
                                 pressure += delta.powf(1.1);
                             }
                         }
                     }
 
-                    let value = (pressure / self.k_adjust_uroko2_length).floor();
-                    let capped = value.min(self.k_adjust_uroko2_step) as usize;
+                    let value = (pressure / self.k_adjust_triangle2_length).floor();
+                    let capped = value.min(self.k_adjust_triangle2_step) as usize;
                     adjusted[idx].1.triangle_adjustment = capped;
                 }
             }

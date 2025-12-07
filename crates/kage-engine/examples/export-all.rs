@@ -1,9 +1,9 @@
 use std::fs;
 
-use kage_engine::{kage::Kage, polygons::Polygons};
+use kage_engine::{Typeface, kage::Kage, polygons::Polygons};
 
 fn main() {
-    let mut kage = Kage::new(false);
+    let mut kage = Kage::new(Typeface::Ming, false);
     let newest_data = fs::read_to_string("./data/dump_newest_only.txt").unwrap();
     let all_version_data = fs::read_to_string("./data/dump_all_versions.txt").unwrap();
     let names = set_full_components(&mut kage, &newest_data, &all_version_data);

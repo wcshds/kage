@@ -8,3 +8,5 @@ pub(crate) mod polygon;
 pub mod polygons;
 pub(crate) mod two_d;
 pub(crate) mod utils;
+
+pub use font::Typeface;
